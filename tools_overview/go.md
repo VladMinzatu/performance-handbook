@@ -2,7 +2,7 @@
 
 ## The `runtime` package
 
-Package runtime contains operations that interact with Go's runtime, including functions that control goroutines, the GC and allow access to low level metrics such as memory usage (see pkg.go.dev/runtime)
+Package `runtime` contains operations that interact with Go's runtime, including functions that control goroutines, the GC and allow access to low level metrics such as memory usage (see pkg.go.dev/runtime)
 
 ## Benchmarks
 
@@ -12,9 +12,24 @@ The easiest and standard way to write benchmarks in Go is to use the built-in fu
 
 Benchmark functions have a signature of the form `func Benchmark*(*testing.B)`. `b.N` will typically be used inside the function and determines the number of iterations. The output from running `go test -bench=.` will tell us how many times the code segment under test was run and what was the average time it took.
 
+Other flags that are supported are `-benchmem` to include memory allocations and `-benchtime=5` to set the duration.
+
 ## Profilers
 
-Go supports multiple profilers listed below. They way to work with them typically involves these general steps:
+`pprof` is Go's built-in profiling tool that can be used via `net/http/pprof` or `runtime/pprof`.
+
+#### Option1: Using the `net/http/pprof` runtime server
+
+```
+import _ "net/http/pprof"
+import "net/http"
+```
+
+and start a server and it will create the `/debug/pprof/` endpoint.
+
+#### Option2: Using `runtime/pprof`
+
+They way to work with profilers typically involves these general steps:
 
 - modify your code to start a profiler (this will typically involve pointing it to a file that collects the profile data)
 - run the code
@@ -23,6 +38,8 @@ Go supports multiple profilers listed below. They way to work with them typicall
 This can be combined nicely with benchmarks when appropriate (e.g. `go test -bench='.' -cpuprofile='cpu.prof' -memprofile='mem.prof'`), but sometimes you'll probably want to test large code segments or an entire application in a production environment or something that resembles that.
 
 Note: `go test ...` would also work with those \*profile options.
+
+In this way, we can use the multiple profiler types supported by Go:
 
 ### CPU profiler
 
@@ -82,6 +99,20 @@ Tracing is the recording of timestamped events. (this is useful at the go applic
 
 The built in runtime tracer captures scheduler, GC, contention, syscal etc. events.(see src/runtime/trace.go)
 
+```
+...
+trace.Start(f)
+defer trace.Stop()
+//...application logic
+...
+```
+
+When done, run the trace viewer with:
+
+```
+go tool trace trace.out
+```
+
 This can expose issues not captured by the profilers mentioned above.
 
 To run, e.g. using https://github.com/pkg/profile :
@@ -89,9 +120,6 @@ To run, e.g. using https://github.com/pkg/profile :
 ```
 defer profile.Start(profile.TraceProfile, profile.Path(".")).Stop()
 ```
-
-It comes with its own UI to view thread and goroutine timelines.
-After running, `go tool trace trace.out`
 
 Can also be exported to Prometheus as metrics accessible through the metrics endpoint (e.g. https://github.com/MadhavJivrajani/gse - essentially it runs a go program with `GODEBUG=schedtrace=10 <binary>` and then it scans the stderr for "SCHED" and then parses those traces to extract metrics and pushes them to prometheus).
 
