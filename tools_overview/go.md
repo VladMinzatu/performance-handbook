@@ -54,6 +54,10 @@ defer profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.Profi
 
 Alternatively, `pprof.WriteHeapProfile(f)` could be used to do a heap dump at a point in time. `go tool pprof mem.prof` can be used on the output.
 
+### Goroutine profiler
+
+Shows current goroutines and their stack traces and can reveal goroutine leaks, deadlocks and concurrency issues.
+
 ### Block profiler
 
 Will capture off-CPU time spent waiting on channels and mutexes (but not sleep, I/O, GC). The statistics will show cumulatie delays per stack trace.
@@ -95,7 +99,7 @@ Can also be exported to Prometheus as metrics accessible through the metrics end
 
 For higher level observability, check https://github.com/open-telemetry/opentelemetry-go
 
-# Ideas
+# Experiment Ideas
 
 - Optimizing memory allocations (heap vs stack) - benchmarks
 
@@ -106,6 +110,7 @@ For higher level observability, check https://github.com/open-telemetry/opentele
 - Goroutine leaks
 
 - performance channel sync vs locking primitives (channel sync is seamless as part of the regular scheduling, whereas locking is extra and expensive operatio - demo it)
+
 - goroutine vs mutex use cases
 
 ## References
