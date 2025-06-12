@@ -20,12 +20,33 @@ Other flags that are supported are `-benchmem` to include memory allocations and
 
 #### Option1: Using the `net/http/pprof` runtime server
 
+Just start your app with `net/http/pprof` imported and start a server if the app doesn't already start one
+
 ```
 import _ "net/http/pprof"
 import "net/http"
+...
+func main() {
+  go func() {
+    log.Println(http.ListenAndServe("localhost:6060", nil))
+  }
+}
 ```
 
-and start a server and it will create the `/debug/pprof/` endpoint.
+This will make endpoints `localhost:6060/debug/pprof/*` accessible. The following profiles are now possible:
+
+- `debug/pprof/heap` - Memory allocations snapshot
+- `debug/pprof/profile?seconds=30` - CPU profile (defaults to 30s)
+- `debug/pprof/goroutine` - Goroutine dump
+- `debug/pprof/block` - blocking events
+- `debug/pprof/mutex` - Mutex contention
+- `debug/pprof/threadcreate` - OS thread creation events
+
+You can call them directly, or you can still use the cli tool:
+
+```
+go tool pprof http://localhost:6060/debug/pprof/profile
+```
 
 #### Option2: Using `runtime/pprof`
 
@@ -39,7 +60,11 @@ This can be combined nicely with benchmarks when appropriate (e.g. `go test -ben
 
 Note: `go test ...` would also work with those \*profile options.
 
-In this way, we can use the multiple profiler types supported by Go:
+#### When to use which one?
+
+Interacting with the Go profiling infrastructure can be achieved with either the `runtime/pprof` approach or the `net/http/pprof` approach and they are functionally nearly equivalent. You may want to combine the two: have `net/http/pprof` for production on-demand diagnostics (profiles are triggered via HTTP) and use the `runtime/pprof` approach in tests, benchmarks and offline/local diagnostics (it requires manual control and setup, but gives more control and can be used to test critical sections of code in isolation, avoid noise in profiles, profile tests and scritps, etc.).
+
+With either of these approaches, you can use multiple profiler types supported by Go:
 
 ### CPU profiler
 
