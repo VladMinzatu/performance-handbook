@@ -1,9 +1,5 @@
 # Go Tools for profiling and observability
 
-## The `runtime` package
-
-Package `runtime` contains operations that interact with Go's runtime, including functions that control goroutines, the GC and allow access to low level metrics such as memory usage (see pkg.go.dev/runtime)
-
 ## Benchmarks
 
 Benchmarks execute a certain code segment a number of times in order to get a stable estimate for the execution time of that code segment.
@@ -64,6 +60,8 @@ Note: `go test ...` would also work with those \*profile options.
 
 Interacting with the Go profiling infrastructure can be achieved with either the `runtime/pprof` approach or the `net/http/pprof` approach and they are functionally nearly equivalent. You may want to combine the two: have `net/http/pprof` for production on-demand diagnostics (profiles are triggered via HTTP) and use the `runtime/pprof` approach in tests, benchmarks and offline/local diagnostics (it requires manual control and setup, but gives more control and can be used to test critical sections of code in isolation, avoid noise in profiles, profile tests and scritps, etc.).
 
+Using the `runtime/pprof` approach is not meant for production, as in some cases the overhead is significant.
+
 With either of these approaches, you can use multiple profiler types supported by Go:
 
 ### CPU profiler
@@ -122,7 +120,19 @@ But it can be useful for detecting goroutine leaks or diagnose why a program mig
 
 Tracing is the recording of timestamped events. (this is useful at the go application level, the same way distributed tracing is useful for understanding performance at a distributed system level)
 
-The built in runtime tracer captures scheduler, GC, contention, syscal etc. events.(see src/runtime/trace.go)
+Go's scheduler tracer lives in the `runtime/trace` package and is a low-level, highly detailed tracer. (it's separate from pprof)
+
+The built in runtime tracer captures scheduler, GC, contention, syscal etc. events as well as user-defined trace regions and tasks (via `trace.Log`, `trace.WithRegion`, `trace.NewTask`) (see src/runtime/trace.go)
+
+You want to run this to answer questions such as:
+
+- Why is this goroutine not running immediately?
+- What is blocking the scheduler?
+- Why is GC taking so long?
+- Why is the CPU underutilized?
+- What bottlenecks are there?
+
+To run it:
 
 ```
 ...
@@ -148,9 +158,13 @@ defer profile.Start(profile.TraceProfile, profile.Path(".")).Stop()
 
 Can also be exported to Prometheus as metrics accessible through the metrics endpoint (e.g. https://github.com/MadhavJivrajani/gse - essentially it runs a go program with `GODEBUG=schedtrace=10 <binary>` and then it scans the stderr for "SCHED" and then parses those traces to extract metrics and pushes them to prometheus).
 
+Tracing is not meant to be used in production (except maybe in short bursts) as the overhead it adds is high.
+
 ## Observability
 
 For higher level observability, check https://github.com/open-telemetry/opentelemetry-go
+
+This one is designed for production use cases, obviously.
 
 # Experiment Ideas
 
