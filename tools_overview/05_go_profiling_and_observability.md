@@ -1,5 +1,7 @@
 # Go Tools for profiling and observability
 
+These tools are go specific, but unlike the others, they are also platform independent (whereas in the other notes we mainly mentioned Linux tools). So if you're using Go, possibly developing on a Mac, these should probably be the first go-to tools for application level performance profiling and observability.
+
 ## Benchmarks
 
 Benchmarks execute a certain code segment a number of times in order to get a stable estimate for the execution time of that code segment.
