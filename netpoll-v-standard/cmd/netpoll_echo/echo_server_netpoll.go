@@ -2,11 +2,36 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/cloudwego/netpoll"
 )
+
+func main() {
+	addr := flag.String("addr", "localhost:8081", "address to listen on")
+	flag.Parse()
+
+	stop, err := StartNetpollEchoServer(*addr)
+	if err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
+
+	log.Printf("Netpoll echo server listening on %s", *addr)
+
+	// Wait for interrupt signal
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
+
+	log.Println("Shutting down server...")
+	stop()
+	log.Println("Server stopped")
+}
 
 func StartNetpollEchoServer(addr string) (stop func(), err error) {
 	listener, err := netpoll.CreateListener("tcp", addr)

@@ -1,10 +1,35 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 )
+
+func main() {
+	addr := flag.String("addr", "localhost:8080", "address to listen on")
+	flag.Parse()
+
+	stop, err := StartStdEchoServer(*addr)
+	if err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
+
+	log.Printf("Standard echo server listening on %s", *addr)
+
+	// Wait for interrupt signal
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
+
+	log.Println("Shutting down server...")
+	stop()
+	log.Println("Server stopped")
+}
 
 func StartStdEchoServer(addr string) (stop func(), err error) {
 	ln, err := net.Listen("tcp", addr)
