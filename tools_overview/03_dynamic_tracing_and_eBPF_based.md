@@ -15,7 +15,7 @@ Use Case: Framework for high-performance, low-overhead kernel instrumentation.
 
 > Read the great book "Learning eBPF" by Liz Rice.
 
-## bpftrace
+## [bpftrace](https://github.com/bpftrace/bpftrace)
 
 High-level, user-friendly tracing tool based on eBPF.
 
