@@ -1,4 +1,4 @@
-# High-Level System Metric Tools
+# High-Level (System-Wide) Tools
 
 These tools provide a broad overview of system (i.e. host/node/OS) performance by monitoring CPU, memory, disk I/O, and network activity. They're ideal for quickly identifying bottlenecks or misbehaving processes.
 
