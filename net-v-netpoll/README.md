@@ -25,7 +25,7 @@ go run cmd/std_echo/echo_server_std.go
 And then run the load test on the standard lib server:
 
 ```
-go run tcpload.go --host 127.0.0.1:8080 --users 100 --duration 10s --message "hello" --interval 100ms
+go run cmd/tcpload.go --host 127.0.0.1:8080 --users 100 --duration 10s --message "hello" --interval 100ms
 Starting test: 100 users for 10s
 
 === Load Test Complete ===
@@ -38,6 +38,7 @@ Avg RTT:  1.495764ms
 And on the netpoll server:
 
 ```
+go run cmd/tcpload.go --host 127.0.0.1:8081 --users 100 --duration 10s --message "hello" --interval 100ms
 Starting test: 100 users for 10s
 
 === Load Test Complete ===
