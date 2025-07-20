@@ -25,25 +25,27 @@ go run cmd/std_echo/echo_server_std.go
 And then run the load test on the standard lib server:
 
 ```
-go run cmd/tcpload.go --host 127.0.0.1:8080 --users 100 --duration 10s --message "hello" --interval 100ms
-Starting test: 100 users for 10s
+go run cmd/tcpload.go --host 127.0.0.1:8080 --users 1000 --duration 10s --message "hello" --interval 100ms
+Starting test: 1000 users for 10s
 
 === Load Test Complete ===
-Sent:     9700
-Received: 9700
+Sent:     98769
+Received: 98769
 Failures: 0
-Avg RTT:  1.495764ms
+Avg RTT:  1.091983ms
 ```
 
 And on the netpoll server:
 
 ```
-go run cmd/tcpload.go --host 127.0.0.1:8081 --users 100 --duration 10s --message "hello" --interval 100ms
-Starting test: 100 users for 10s
+go run cmd/tcpload.go --host 127.0.0.1:8081 --users 1000 --duration 10s --message "hello" --interval 100ms
+Starting test: 1000 users for 10s
 
 === Load Test Complete ===
-Sent:     9700
-Received: 9700
+Sent:     97764
+Received: 97764
 Failures: 0
-Avg RTT:  1.568389ms
+Avg RTT:  1.643988ms
 ```
+
+First crude reulsts are already rather interesting with the netpoll implementation being consistently quite a bit slower on avg RTT.

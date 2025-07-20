@@ -50,24 +50,24 @@ func main() {
 			defer wg.Done()
 			rand.Seed(time.Now().UnixNano() + int64(id)) // for jitter
 
+			conn, err := net.Dial("tcp", *host)
+			if err != nil {
+				fmt.Println("Error connecting to server. User aborting: ", err)
+				return // This user gives up and doesn't take part in the test if it can't connect at all
+			}
+			defer conn.Close()
+
 			for {
 				select {
 				case <-stop:
 					return
 				default:
-					conn, err := net.Dial("tcp", *host)
-					if err != nil {
-						stats.Record(0, false)
-						time.Sleep(500 * time.Millisecond)
-						continue
-					}
-
 					start := time.Now()
 					_, err = conn.Write([]byte(*msg + "\n"))
 					if err != nil {
+						fmt.Println("Error writing to server:", err)
 						stats.Record(0, false)
-						conn.Close()
-						continue
+						return
 					}
 
 					buf := make([]byte, 1024)
@@ -76,10 +76,11 @@ func main() {
 					rtt := time.Since(start)
 					if err != nil {
 						stats.Record(0, false)
+						fmt.Println("Error reading from server:", err)
+						return
 					} else {
 						stats.Record(rtt, true)
 					}
-					conn.Close()
 
 					if *interval > 0 {
 						time.Sleep(*interval)

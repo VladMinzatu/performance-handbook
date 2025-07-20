@@ -1,69 +1,61 @@
 package main
 
+// implementation taken directly from the reference: https://github.com/cloudwego/netpoll-examples/blob/main/echo/server.go
+
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
 	"github.com/cloudwego/netpoll"
 )
 
 func main() {
-	addr := flag.String("addr", "localhost:8081", "address to listen on")
-	flag.Parse()
+	network, address := "tcp", ":8081"
+	listener, _ := netpoll.CreateListener(network, address)
 
-	stop, err := StartNetpollEchoServer(*addr)
-	if err != nil {
-		log.Fatalf("failed to start server: %v", err)
-	}
+	eventLoop, _ := netpoll.NewEventLoop(
+		handle,
+		netpoll.WithOnPrepare(prepare),
+		netpoll.WithOnConnect(connect),
+		netpoll.WithReadTimeout(time.Second),
+	)
 
-	log.Printf("Netpoll echo server listening on %s", *addr)
-
-	// Wait for interrupt signal
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
-
-	log.Println("Shutting down server...")
-	stop()
-	log.Println("Server stopped")
+	log.Printf("Netpoll echo server listening on port 8081")
+	// start listen loop ...
+	eventLoop.Serve(listener)
 }
 
-func StartNetpollEchoServer(addr string) (stop func(), err error) {
-	listener, err := netpoll.CreateListener("tcp", addr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create netpoll listener: %w", err)
-	}
+var _ netpoll.OnPrepare = prepare
+var _ netpoll.OnConnect = connect
+var _ netpoll.OnRequest = handle
+var _ netpoll.CloseCallback = close
 
-	// handler for incoming connections
-	onRequest := func(ctx context.Context, connection netpoll.Connection) error {
-		buf := make([]byte, 4096)
-		n, err := connection.Read(buf)
-		if err != nil {
-			return err
-		}
+func prepare(connection netpoll.Connection) context.Context {
+	return context.Background()
+}
 
-		_, err = connection.Write(buf[:n])
-		return err
-	}
+func close(connection netpoll.Connection) error {
+	fmt.Printf("[%v] connection closed\n", connection.RemoteAddr())
+	return nil
+}
 
-	eventLoop, err := netpoll.NewEventLoop(netpoll.OnRequest(onRequest))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create event loop: %w", err)
-	}
+func connect(ctx context.Context, connection netpoll.Connection) context.Context {
+	fmt.Printf("[%v] connection established\n", connection.RemoteAddr())
+	connection.AddCloseCallback(close)
+	return ctx
+}
 
-	go func() {
-		if serveErr := eventLoop.Serve(listener); serveErr != nil {
-			log.Printf("netpoll event loop stopped: %v", serveErr)
-		}
-	}()
+func handle(ctx context.Context, connection netpoll.Connection) error {
+	reader, writer := connection.Reader(), connection.Writer()
+	defer reader.Release()
 
-	stop = func() {
-		eventLoop.Shutdown(context.Background())
-	}
-	return stop, nil
+	msg, _ := reader.ReadString(reader.Len())
+	fmt.Printf("[recv msg] %v\n", msg)
+
+	writer.WriteString(msg)
+	writer.Flush()
+
+	return nil
 }
