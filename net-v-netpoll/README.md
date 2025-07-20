@@ -29,10 +29,13 @@ go run cmd/tcpload.go --host 127.0.0.1:8080 --users 1000 --duration 10s --messag
 Starting test: 1000 users for 10s
 
 === Load Test Complete ===
-Sent:     98769
-Received: 98769
+Sent:     98728
+Received: 98728
 Failures: 0
-Avg RTT:  1.091983ms
+Avg RTT:  1.069272ms
+p90 RTT:  2.371583ms
+p95 RTT:  3.227647ms
+p99 RTT:  5.292031ms
 ```
 
 And on the netpoll server:
@@ -42,10 +45,13 @@ go run cmd/tcpload.go --host 127.0.0.1:8081 --users 1000 --duration 10s --messag
 Starting test: 1000 users for 10s
 
 === Load Test Complete ===
-Sent:     97764
-Received: 97764
+Sent:     97227
+Received: 97227
 Failures: 0
-Avg RTT:  1.643988ms
+Avg RTT:  1.807808ms
+p90 RTT:  3.977215ms
+p95 RTT:  5.226495ms
+p99 RTT:  7.491583ms
 ```
 
-First crude reulsts are already rather interesting with the netpoll implementation being consistently quite a bit slower on avg RTT.
+First crude reulsts are already rather interesting with the netpoll implementation being consistently quite a bit slower on avg RTT and this tracks into the higher percentile latencies as well.

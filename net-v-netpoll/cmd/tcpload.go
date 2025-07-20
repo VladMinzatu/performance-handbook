@@ -7,14 +7,24 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/HdrHistogram/hdrhistogram-go"
 )
 
 type Stats struct {
-	mu       sync.Mutex
-	sent     int
-	received int
-	failures int
-	totalRTT time.Duration
+	mu        sync.Mutex
+	sent      int
+	received  int
+	failures  int
+	totalRTT  time.Duration
+	histogram *hdrhistogram.Histogram
+}
+
+func NewStats() *Stats {
+	// Track latencies from 1 microsecond to 10 seconds, with 3 significant figures
+	return &Stats{
+		histogram: hdrhistogram.New(1, 10_000_000_000, 3),
+	}
 }
 
 func (s *Stats) Record(rtt time.Duration, ok bool) {
@@ -24,6 +34,7 @@ func (s *Stats) Record(rtt time.Duration, ok bool) {
 	if ok {
 		s.received++
 		s.totalRTT += rtt
+		_ = s.histogram.RecordValue(rtt.Nanoseconds())
 	} else {
 		s.failures++
 	}
@@ -41,7 +52,7 @@ func main() {
 	fmt.Printf("Starting test: %d users for %s\n", *users, *duration)
 
 	var wg sync.WaitGroup
-	stats := &Stats{}
+	stats := NewStats()
 	stop := make(chan struct{})
 
 	for i := 0; i < *users; i++ {
@@ -103,5 +114,12 @@ func main() {
 	if stats.received > 0 {
 		avgRTT := stats.totalRTT / time.Duration(stats.received)
 		fmt.Printf("Avg RTT:  %s\n", avgRTT)
+
+		// Percentiles
+		stats.mu.Lock()
+		fmt.Printf("p90 RTT:  %s\n", time.Duration(stats.histogram.ValueAtQuantile(90.0)))
+		fmt.Printf("p95 RTT:  %s\n", time.Duration(stats.histogram.ValueAtQuantile(95.0)))
+		fmt.Printf("p99 RTT:  %s\n", time.Duration(stats.histogram.ValueAtQuantile(99.0)))
+		stats.mu.Unlock()
 	}
 }

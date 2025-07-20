@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -37,12 +36,10 @@ func prepare(connection netpoll.Connection) context.Context {
 }
 
 func close(connection netpoll.Connection) error {
-	fmt.Printf("[%v] connection closed\n", connection.RemoteAddr())
 	return nil
 }
 
 func connect(ctx context.Context, connection netpoll.Connection) context.Context {
-	fmt.Printf("[%v] connection established\n", connection.RemoteAddr())
 	connection.AddCloseCallback(close)
 	return ctx
 }
@@ -52,7 +49,6 @@ func handle(ctx context.Context, connection netpoll.Connection) error {
 	defer reader.Release()
 
 	msg, _ := reader.ReadString(reader.Len())
-	fmt.Printf("[recv msg] %v\n", msg)
 
 	writer.WriteString(msg)
 	writer.Flush()
