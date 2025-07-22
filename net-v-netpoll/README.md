@@ -69,3 +69,16 @@ Running a CPU profile during our "load test" shows how CPU time is spent in both
 The thing that stands out for me here is that the netpoll implementation spends more time on thread conditions, whereas the net implementation makes more efficient use of the Go scheduler in this case. Not necessarily surprising, just interesting to look under the hood. Remember, we're just looking at a very specific usage pattern of a simple echo server processing small messages here.
 
 Let's have a look at some traces and see what they reveal.
+
+Using the `profile.TraceProfile` of the `github.com/pkg/profile` package we can generate traces that we can then inspect with ` go tool trace trace.out`.
+
+**Standard web:**
+![trace_net](assets/trace_net.png)
+
+**Netpoll:**
+![trace_netpoll](assets/trace_netpoll.png)
+
+Some observations:
+
+- of course, the netpoll implementation has only the one goroutine to handle requests, being scheduled on different cores at different times and mainly making syscalls. Meanwhile, the standard implementation uses hundreds of goroutines in total and it is easy to see that some goroutines running at the same time on different cores.
+- on a related note, the number of running threads spikes to 8 regularly in the standard implementation, whereas in the netpoll implementatin we normall don't have more than the 1 running thread.
