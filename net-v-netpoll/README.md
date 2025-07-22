@@ -55,3 +55,17 @@ p99 RTT:  7.491583ms
 ```
 
 First crude reulsts are already rather interesting with the netpoll implementation being consistently quite a bit slower on avg RTT and this tracks into the higher percentile latencies as well.
+
+Running a CPU profile during our "load test" shows how CPU time is spent in both cases. Below are "Top" views of the CPU profiles. Graph and flamegraph would be more visually compelling, but this is more readable embedded here:
+
+**Standard web:**
+
+![cpu_prof_net](assets/cpu_prof_net.png)
+
+**Netpoll:**
+
+![cpu_prof_netpoll](assets/cpu_prof_netpoll.png)
+
+The thing that stands out for me here is that the netpoll implementation spends more time on thread conditions, whereas the net implementation makes more efficient use of the Go scheduler in this case. Not necessarily surprising, just interesting to look under the hood. Remember, we're just looking at a very specific usage pattern of a simple echo server processing small messages here.
+
+Let's have a look at some traces and see what they reveal.

@@ -8,9 +8,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/pkg/profile"
 )
 
 func main() {
+	defer profile.Start(profile.TraceProfile, profile.ProfilePath(".")).Stop()
 	addr := flag.String("addr", "localhost:8080", "address to listen on")
 	flag.Parse()
 
@@ -25,6 +29,8 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
+
+	time.Sleep(1 * time.Second) // TODO: check why this is needed for the profile to be written
 
 	log.Println("Shutting down server...")
 	stop()

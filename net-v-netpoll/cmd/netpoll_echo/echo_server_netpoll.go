@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/cloudwego/netpoll"
+	"github.com/pkg/profile"
 )
 
 func main() {
+	defer profile.Start(profile.TraceProfile, profile.ProfilePath(".")).Stop()
 	network, address := "tcp", ":8081"
 	listener, _ := netpoll.CreateListener(network, address)
 
