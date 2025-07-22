@@ -81,4 +81,4 @@ Using the `profile.TraceProfile` of the `github.com/pkg/profile` package we can 
 Some observations:
 
 - of course, the netpoll implementation has only the one goroutine to handle requests, being scheduled on different cores at different times and mainly making syscalls. Meanwhile, the standard implementation uses hundreds of goroutines in total and it is easy to see that some goroutines running at the same time on different cores.
-- on a related note, the number of running threads spikes to 8 regularly in the standard implementation, whereas in the netpoll implementatin we normall don't have more than the 1 running thread.
+- on a related note, the number of running threads spikes to 8 regularly in the standard implementation, whereas in the netpoll implementatin we normally don't have more than the 1 running thread.
