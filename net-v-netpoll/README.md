@@ -82,3 +82,7 @@ Some observations:
 
 - of course, the netpoll implementation has only the one goroutine to handle requests, being scheduled on different cores at different times and mainly making syscalls. Meanwhile, the standard implementation uses hundreds of goroutines in total and it is easy to see that some goroutines running at the same time on different cores.
 - on a related note, the number of running threads spikes to 8 regularly in the standard implementation, whereas in the netpoll implementatin we normally don't have more than the 1 running thread.
+
+My interpretation of all this is that the implementation that uses the standard `net` package is better able to leverage the Go runtime and concurrency, primarily by letting multiple goroutines make read/write syscalls in parallel rather than forcing the individual read/writes to be sequenced as in the netpoll implementation. This advantage is real, because even at the kernel level, parallelism in handling such system calls is present to some extent (down to a certain level).
+
+And this is a visible advantage here in our measurements because this particular use case is perfect for taking advantage of the concurrency in Go: we have no work to do in additional to the syscalls and minimal buffer copying. The results are not surprising. Netpoll is expected to shine in other use cases, such as large numbers of mostly idle connections (which is quite the opposite of what we've set up here).
