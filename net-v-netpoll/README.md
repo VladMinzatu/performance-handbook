@@ -86,3 +86,51 @@ Some observations:
 My interpretation of all this is that the implementation that uses the standard `net` package is better able to leverage the Go runtime and concurrency, primarily by letting multiple goroutines make read/write syscalls in parallel rather than forcing the individual read/writes to be sequenced as in the netpoll implementation. This advantage is real, because even at the kernel level, parallelism in handling such system calls is present to some extent (down to a certain level).
 
 And this is a visible advantage here in our measurements because this particular use case is perfect for taking advantage of the concurrency in Go: we have no work to do in additional to the syscalls and minimal buffer copying. The results are not surprising. Netpoll is expected to shine in other use cases, such as large numbers of mostly idle connections (which is quite the opposite of what we've set up here).
+
+### Mostly-idle connections
+
+Re-running the tests with the configuration of using mostly idle connections that just send the occasional "keepalive" message, like so:
+
+```
+go run cmd/tcpload.go --host 127.0.0.1:8081 --users 10000 --duration 10s --message "hello" --interval 100ms --idle
+...
+go run cmd/tcpload.go --host 127.0.0.1:8080 --users 10000 --duration 10s --message "hello" --interval 100ms --idle
+```
+
+we get the following results for the standard implementation:
+
+```
+Starting idle test: 10000 users for 10s (keepalive every 1s)
+
+=== Load Test Complete ===
+Sent:     90529
+Received: 90529
+Failures: 0
+Avg RTT:  5.505987ms
+p90 RTT:  20.365311ms
+p95 RTT:  24.068095ms
+p99 RTT:  27.639807ms
+```
+
+and for the netpoll implementation:
+
+```
+Starting idle test: 10000 users for 10s (keepalive every 1s)
+
+=== Load Test Complete ===
+Sent:     90360
+Received: 90360
+Failures: 0
+Avg RTT:  5.08965ms
+p90 RTT:  21.594111ms
+p95 RTT:  24.346623ms
+p99 RTT:  27.951103ms
+```
+
+Now the results are comparable in terms of latency, as expected (though, to be fair, I've noticed pretty big variability from run to run on my machine).
+
+Now let's look for what we expect to really be differentiating here: a memory profile, by adding these lines in the beginning of our servers:
+
+```
+defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+```

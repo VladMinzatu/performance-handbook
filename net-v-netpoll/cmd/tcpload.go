@@ -47,9 +47,15 @@ func main() {
 	duration := flag.Duration("duration", 10*time.Second, "Test duration")
 	msg := flag.String("message", "hello", "Message to send")
 	interval := flag.Duration("interval", 0, "Interval between sends per client")
+	idle := flag.Bool("idle", false, "If set, open long-lived mostly idle connections (no traffic except keepalive)")
+	keepaliveInterval := flag.Duration("keepalive-interval", 1*time.Second, "Interval for keepalive pings in idle mode (if idle is set)")
 	flag.Parse()
 
-	fmt.Printf("Starting test: %d users for %s\n", *users, *duration)
+	if *idle {
+		fmt.Printf("Starting idle test: %d users for %s (keepalive every %s)\n", *users, *duration, *keepaliveInterval)
+	} else {
+		fmt.Printf("Starting test: %d users for %s\n", *users, *duration)
+	}
 
 	var wg sync.WaitGroup
 	stats := NewStats()
@@ -59,7 +65,7 @@ func main() {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			rand.Seed(time.Now().UnixNano() + int64(id)) // for jitter
+			rand.Seed(time.Now().UnixNano() + int64(id)) // jitter
 
 			conn, err := net.Dial("tcp", *host)
 			if err != nil {
@@ -68,33 +74,55 @@ func main() {
 			}
 			defer conn.Close()
 
-			for {
-				select {
-				case <-stop:
-					return
-				default:
-					start := time.Now()
-					_, err = conn.Write([]byte(*msg + "\n"))
-					if err != nil {
-						fmt.Println("Error writing to server:", err)
-						stats.Record(0, false)
-						return
-					}
+			sendAndReceive := func(message string) bool {
+				start := time.Now()
+				_, err = conn.Write([]byte(message))
+				if err != nil {
+					fmt.Printf("Error writing to server: %v\n", err)
+					stats.Record(0, false)
+					return false
+				}
+				buf := make([]byte, 1024)
+				conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+				_, err = conn.Read(buf)
+				rtt := time.Since(start)
+				if err != nil {
+					stats.Record(0, false)
+					fmt.Printf("Error reading from server: %v\n", err)
+					return false
+				} else {
+					stats.Record(rtt, true)
+				}
+				return true
+			}
 
-					buf := make([]byte, 1024)
-					conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-					_, err = conn.Read(buf)
-					rtt := time.Since(start)
-					if err != nil {
-						stats.Record(0, false)
-						fmt.Println("Error reading from server:", err)
+			if *idle {
+				// Idle mode: just keep the connection open, send a keepalive ping every keepaliveInterval
+				ticker := time.NewTicker(*keepaliveInterval)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-stop:
 						return
-					} else {
-						stats.Record(rtt, true)
+					case <-ticker.C:
+						if !sendAndReceive("ping\n") {
+							return
+						}
 					}
-
-					if *interval > 0 {
-						time.Sleep(*interval)
+				}
+			} else {
+				// Normal load test mode
+				for {
+					select {
+					case <-stop:
+						return
+					default:
+						if !sendAndReceive(*msg + "\n") {
+							return
+						}
+						if *interval > 0 {
+							time.Sleep(*interval)
+						}
 					}
 				}
 			}
