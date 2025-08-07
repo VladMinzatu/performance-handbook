@@ -129,8 +129,10 @@ p99 RTT:  27.951103ms
 
 Now the results are comparable in terms of latency, as expected (though, to be fair, I've noticed pretty big variability from run to run on my machine).
 
-Now let's look for what we expect to really be differentiating here: a memory profile, by adding these lines in the beginning of our servers:
+Just for comparison, let's look at a CPU profile comparison. First, the standard implementation:
+![cpu_prof_net](assets/cpu_prof_net_idle.png)
 
-```
-defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
-```
+And the netpoll implementation:
+![cpu_prof_netpoll](assets/cpu_prof_netpoll_idle.png)
+
+Nothing surprising here, we can see that the ratios track with the previous use case, but the time spent on computation is just lower.
