@@ -26,19 +26,7 @@ func NewLineScannerInputProcessor(reader io.Reader) (*LineScannerInputProcessor,
 }
 
 func (p *LineScannerInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
-	scanner := bufio.NewScanner(p.reader)
-	for scanner.Scan() {
-		line := scanner.Text()
-		for _, processor := range lineProcessors {
-			processor.Process(line)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return process(p.reader, lineProcessors)
 }
 
 type UpFrontLoadingInputProcessor struct {
@@ -81,10 +69,9 @@ func (p *UpFrontLoadingInputProcessor) RunThrough(lineProcessors []LineProcessor
 			return err
 		}
 	}
-	text := string(data)
-	splitAndProcess(text, lineProcessors)
 
-	return nil
+	reader := strings.NewReader(string(data))
+	return process(reader, lineProcessors)
 }
 
 type BufferedInputProcessor struct {
@@ -117,9 +104,8 @@ func (p *BufferedInputProcessor) RunThrough(lineProcessors []LineProcessor) erro
 	}
 
 	text := buffer.String()
-	splitAndProcess(text, lineProcessors)
-
-	return nil
+	reader := strings.NewReader(text)
+	return process(reader, lineProcessors)
 }
 
 type MmapInputProcessor struct {
@@ -158,16 +144,23 @@ func (p *MmapInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
 	defer syscall.Munmap(data)
 
 	text := string(data)
-	splitAndProcess(text, lineProcessors)
-
-	return nil
+	reader := strings.NewReader(text)
+	return process(reader, lineProcessors)
 }
 
-func splitAndProcess(text string, lineProcessors []LineProcessor) {
-	lines := strings.Split(text, "\n")
-	for _, line := range lines {
+func process(reader io.Reader, lineProcessors []LineProcessor) error {
+	scanner := bufio.NewScanner(reader)
+
+	for scanner.Scan() {
+		line := scanner.Text()
 		for _, processor := range lineProcessors {
 			processor.Process(line)
 		}
 	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
