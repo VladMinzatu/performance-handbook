@@ -3,26 +3,29 @@ package processing
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"syscall"
 )
 
 type InputProcessor interface {
-	RunThrough(lineProcessors []LineProcessor)
+	RunThrough(lineProcessors []LineProcessor) error
 }
 
 type LineScannerInputProcessor struct {
 	reader io.Reader
 }
 
-func NewLineScannerInputProcessor(reader io.Reader) *LineScannerInputProcessor {
-	return &LineScannerInputProcessor{reader: reader}
+func NewLineScannerInputProcessor(reader io.Reader) (*LineScannerInputProcessor, error) {
+	if reader == nil {
+		return nil, fmt.Errorf("reader cannot be nil")
+	}
+	return &LineScannerInputProcessor{reader: reader}, nil
 }
 
-func (p *LineScannerInputProcessor) RunThrough(lineProcessors []LineProcessor) {
+func (p *LineScannerInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
 	scanner := bufio.NewScanner(p.reader)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -32,9 +35,10 @@ func (p *LineScannerInputProcessor) RunThrough(lineProcessors []LineProcessor) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatalf("Error reading input: %v", err)
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }
 
 type UpFrontLoadingInputProcessor struct {
@@ -42,49 +46,59 @@ type UpFrontLoadingInputProcessor struct {
 	reader   io.Reader
 }
 
-func NewUpFrontLoadingInputProcessorFromFile(filePath string) *UpFrontLoadingInputProcessor {
+func NewUpFrontLoadingInputProcessorFromFile(filePath string) (*UpFrontLoadingInputProcessor, error) {
+	if filePath == "" {
+		return nil, fmt.Errorf("filePath cannot be empty")
+	}
 	return &UpFrontLoadingInputProcessor{
 		filePath: filePath,
 		reader:   nil,
-	}
+	}, nil
 }
 
-func NewUpFrontLoadingInputProcessorFromReader(reader io.Reader) *UpFrontLoadingInputProcessor {
+func NewUpFrontLoadingInputProcessorFromReader(reader io.Reader) (*UpFrontLoadingInputProcessor, error) {
+	if reader == nil {
+		return nil, fmt.Errorf("reader cannot be nil")
+	}
 	return &UpFrontLoadingInputProcessor{
 		filePath: "",
 		reader:   reader,
-	}
+	}, nil
 }
 
-func (p *UpFrontLoadingInputProcessor) RunThrough(lineProcessors []LineProcessor) {
+func (p *UpFrontLoadingInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
 	var data []byte
 	var err error
 
 	if p.reader != nil {
 		data, err = io.ReadAll(p.reader)
 		if err != nil {
-			log.Fatalf("Error reading input: %v", err)
-			os.Exit(1)
+			return err
 		}
 	} else {
 		data, err = os.ReadFile(p.filePath)
 		if err != nil {
-			log.Fatalf("Error reading input: %v", err)
+			return err
 		}
 	}
 	text := string(data)
 	splitAndProcess(text, lineProcessors)
+
+	return nil
 }
 
 type BufferedInputProcessor struct {
 	reader io.Reader
 }
 
-func NewBufferedInputProcessor(reader io.Reader) *BufferedInputProcessor {
-	return &BufferedInputProcessor{reader: reader}
+func NewBufferedInputProcessor(reader io.Reader) (*BufferedInputProcessor, error) {
+	if reader == nil {
+		return nil, fmt.Errorf("reader cannot be nil")
+	}
+	return &BufferedInputProcessor{reader: reader}, nil
 }
 
-func (p *BufferedInputProcessor) RunThrough(lineProcessors []LineProcessor) {
+func (p *BufferedInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
 	bufReader := bufio.NewReader(p.reader)
 	var buffer bytes.Buffer
 
@@ -98,52 +112,55 @@ func (p *BufferedInputProcessor) RunThrough(lineProcessors []LineProcessor) {
 			break
 		}
 		if err != nil {
-			log.Fatalf("Error reading input: %v", err)
-			os.Exit(1)
+			return err
 		}
 	}
 
 	text := buffer.String()
 	splitAndProcess(text, lineProcessors)
+
+	return nil
 }
 
 type MmapInputProcessor struct {
 	filePath string
 }
 
-func NewMmapInputProcessor(filePath string) *MmapInputProcessor {
-	return &MmapInputProcessor{filePath: filePath}
+func NewMmapInputProcessor(filePath string) (*MmapInputProcessor, error) {
+	if filePath == "" {
+		return nil, fmt.Errorf("filePath cannot be empty")
+	}
+	return &MmapInputProcessor{filePath: filePath}, nil
 }
 
-func (p *MmapInputProcessor) RunThrough(lineProcessors []LineProcessor) {
+func (p *MmapInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
 	f, err := os.Open(p.filePath)
 	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-		os.Exit(1)
+		return err
 	}
 	defer f.Close()
 
 	fi, err := f.Stat()
 	if err != nil {
-		log.Fatalf("Error statting file: %v", err)
-		os.Exit(1)
+		return err
 	}
 	size := fi.Size()
 	if size == 0 {
 		// file is empty, nothing to do
-		return
+		return nil
 	}
 
 	// Memory map the file (read-only)
 	data, err := syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
-		log.Fatalf("Error mapping file: %v", err)
-		os.Exit(1)
+		return err
 	}
 	defer syscall.Munmap(data)
 
 	text := string(data)
 	splitAndProcess(text, lineProcessors)
+
+	return nil
 }
 
 func splitAndProcess(text string, lineProcessors []LineProcessor) {
