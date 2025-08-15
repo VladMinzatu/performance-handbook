@@ -1,7 +1,8 @@
 # performance-handbook
 
-Planning to develop a neatly organized personal handbook for performance observability and optimization, with examples. Primarily motivated by my interest in concurrency and asynchronous patterns, which I want to explore in multiple languages.
+In this repo I am writing collection of small projects (mainly centered around system programming topics) and then doing performance and behaviour analysis on them while testing them in different conditions.
 
-Unless otherwise specified or furhter clarified, we're talking about **Linux** here, as the OS.
+I will mainly be using Linux performance and debugging tools, eBPF tools like bpftrace and Go perf tools. And then I will document findings and comments. I'm running the tests on my Mac and, when necessary, in a Linux VM.
 
-Structure to emerge over time... Let's see how it goes.
+The individual projects will be in subdirectories starting from here, and each will have its own README describing the project and test outcomes. For example:
+- [wc-go](./wc-go)
