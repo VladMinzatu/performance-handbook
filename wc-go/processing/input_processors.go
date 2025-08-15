@@ -10,83 +10,94 @@ import (
 	"syscall"
 )
 
-type InputProcessor interface {
-	RunThrough(lineProcessors []LineProcessor) error
+type InputProcessor struct {
+	ProcessorType string
+	FilePath      string
 }
 
-type LineScannerInputProcessor struct {
-	reader io.Reader
-}
+const (
+	ProcessorTypeScanner   = "scanner"
+	ProcessorTypeUpFront   = "upfront"
+	ProcessorTypeBuffering = "buffering"
+	ProcessorTypeMmap      = "mmap"
+)
 
-func NewLineScannerInputProcessor(reader io.Reader) (*LineScannerInputProcessor, error) {
-	if reader == nil {
-		return nil, fmt.Errorf("reader cannot be nil")
-	}
-	return &LineScannerInputProcessor{reader: reader}, nil
-}
-
-func (p *LineScannerInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
-	return process(p.reader, lineProcessors)
-}
-
-type UpFrontLoadingInputProcessor struct {
-	filePath string
-	reader   io.Reader
-}
-
-func NewUpFrontLoadingInputProcessorFromFile(filePath string) (*UpFrontLoadingInputProcessor, error) {
-	if filePath == "" {
-		return nil, fmt.Errorf("filePath cannot be empty")
-	}
-	return &UpFrontLoadingInputProcessor{
-		filePath: filePath,
-		reader:   nil,
-	}, nil
-}
-
-func NewUpFrontLoadingInputProcessorFromReader(reader io.Reader) (*UpFrontLoadingInputProcessor, error) {
-	if reader == nil {
-		return nil, fmt.Errorf("reader cannot be nil")
-	}
-	return &UpFrontLoadingInputProcessor{
-		filePath: "",
-		reader:   reader,
-	}, nil
-}
-
-func (p *UpFrontLoadingInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
-	var data []byte
-	var err error
-
-	if p.reader != nil {
-		data, err = io.ReadAll(p.reader)
-		if err != nil {
-			return err
+func (p *InputProcessor) Run(lineProcessors []LineProcessor) error {
+	switch p.ProcessorType {
+	case ProcessorTypeScanner:
+		if p.FilePath == "" {
+			return runWithScannerOnReader(os.Stdin, lineProcessors)
 		}
-	} else {
-		data, err = os.ReadFile(p.filePath)
-		if err != nil {
-			return err
+		return runWithScannerOnFile(p.FilePath, lineProcessors)
+	case ProcessorTypeUpFront:
+		if p.FilePath == "" {
+			return runWithUpFrontLoadingOnReader(os.Stdin, lineProcessors)
 		}
+		return runWithUpFrontLoadingOnFile(p.FilePath, lineProcessors)
+	case ProcessorTypeBuffering:
+		if p.FilePath == "" {
+			return runWithBufferringOnReader(os.Stdin, lineProcessors)
+		}
+		return runWithBufferringOnFile(p.FilePath, lineProcessors)
+	case ProcessorTypeMmap:
+		if p.FilePath == "" {
+			return fmt.Errorf("file path is required for mmap processor")
+		}
+		return runWithMmapOnFile(p.FilePath, lineProcessors)
+	default:
+		return fmt.Errorf("unknown processor type: %s", p.ProcessorType)
 	}
+}
 
-	reader := strings.NewReader(string(data))
+func runWithScannerOnReader(reader io.Reader, lineProcessors []LineProcessor) error {
+	if reader == nil {
+		return fmt.Errorf("reader cannot be nil")
+	}
 	return process(reader, lineProcessors)
 }
 
-type BufferedInputProcessor struct {
-	reader io.Reader
-}
-
-func NewBufferedInputProcessor(reader io.Reader) (*BufferedInputProcessor, error) {
-	if reader == nil {
-		return nil, fmt.Errorf("reader cannot be nil")
+func runWithScannerOnFile(filePath string, lineProcessors []LineProcessor) error {
+	err := checkFilePath(filePath)
+	if err != nil {
+		return fmt.Errorf("invalid file path: %w", err)
 	}
-	return &BufferedInputProcessor{reader: reader}, nil
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+	return process(file, lineProcessors)
 }
 
-func (p *BufferedInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
-	bufReader := bufio.NewReader(p.reader)
+func runWithUpFrontLoadingOnReader(reader io.Reader, lineProcessors []LineProcessor) error {
+	if reader == nil {
+		return fmt.Errorf("reader cannot be nil")
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	return process(strings.NewReader(string(data)), lineProcessors)
+}
+
+func runWithUpFrontLoadingOnFile(filePath string, lineProcessors []LineProcessor) error {
+	err := checkFilePath(filePath)
+	if err != nil {
+		return fmt.Errorf("invalid file path: %w", err)
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	return process(strings.NewReader(string(data)), lineProcessors)
+}
+
+func runWithBufferringOnReader(reader io.Reader, lineProcessors []LineProcessor) error {
+	if reader == nil {
+		return fmt.Errorf("reader cannot be nil")
+	}
+	bufReader := bufio.NewReader(reader)
 	var buffer bytes.Buffer
 
 	chunk := make([]byte, 4096) // 4KB chunks
@@ -104,23 +115,29 @@ func (p *BufferedInputProcessor) RunThrough(lineProcessors []LineProcessor) erro
 	}
 
 	text := buffer.String()
-	reader := strings.NewReader(text)
-	return process(reader, lineProcessors)
+	return process(strings.NewReader(text), lineProcessors)
 }
 
-type MmapInputProcessor struct {
-	filePath string
-}
-
-func NewMmapInputProcessor(filePath string) (*MmapInputProcessor, error) {
-	if filePath == "" {
-		return nil, fmt.Errorf("filePath cannot be empty")
+func runWithBufferringOnFile(filePath string, lineProcessors []LineProcessor) error {
+	err := checkFilePath(filePath)
+	if err != nil {
+		return fmt.Errorf("invalid file path: %w", err)
 	}
-	return &MmapInputProcessor{filePath: filePath}, nil
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+	return runWithBufferringOnReader(file, lineProcessors)
 }
 
-func (p *MmapInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
-	f, err := os.Open(p.filePath)
+func runWithMmapOnFile(filePath string, lineProcessors []LineProcessor) error {
+	err := checkFilePath(filePath)
+	if err != nil {
+		return fmt.Errorf("invalid file path: %w", err)
+	}
+
+	f, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
@@ -143,8 +160,7 @@ func (p *MmapInputProcessor) RunThrough(lineProcessors []LineProcessor) error {
 	}
 	defer syscall.Munmap(data)
 
-	text := string(data)
-	reader := strings.NewReader(text)
+	reader := bytes.NewReader(data)
 	return process(reader, lineProcessors)
 }
 
@@ -162,5 +178,15 @@ func process(reader io.Reader, lineProcessors []LineProcessor) error {
 		return err
 	}
 
+	return nil
+}
+
+func checkFilePath(filePath string) error {
+	if filePath == "" {
+		return fmt.Errorf("filePath cannot be empty")
+	}
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("file does not exist: %s", filePath)
+	}
 	return nil
 }

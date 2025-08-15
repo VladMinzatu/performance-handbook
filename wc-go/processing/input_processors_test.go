@@ -65,140 +65,96 @@ var commonTestCases = []processorTest{
 	},
 }
 
-func runProcessorTests(t *testing.T, processorName string, createProcessor func(string) (InputProcessor, error)) {
+var processorFuncs = []struct {
+	name     string
+	procFunc func(reader io.Reader, lineProcessors []LineProcessor) error
+}{
+	{
+		name:     "runWithScannerOnReader",
+		procFunc: runWithScannerOnReader,
+	},
+	{
+		name:     "runWithUpFrontLoadingOnReader",
+		procFunc: runWithUpFrontLoadingOnReader,
+	},
+	{
+		name:     "runWithBufferringOnReader",
+		procFunc: runWithBufferringOnReader,
+	},
+}
+
+var readerFuncs = []struct {
+	name string
+	fn   func(io.Reader, []LineProcessor) error
+}{
+	{"runWithScannerOnReader", runWithScannerOnReader},
+	{"runWithUpFrontLoadingOnReader", runWithUpFrontLoadingOnReader},
+	{"runWithBufferringOnReader", runWithBufferringOnReader},
+}
+
+var fileFuncs = []struct {
+	name string
+	fn   func(string, []LineProcessor) error
+}{
+	{"runWithScannerOnReader", runWithScannerOnFile},
+	{"runWithUpFrontLoadingOnReader", runWithUpFrontLoadingOnFile},
+	{"runWithBufferringOnReader", runWithBufferringOnFile},
+	{"runWithMmapOnFile", runWithMmapOnFile},
+}
+
+func TestInputProcessors_CommonCases(t *testing.T) {
 	for _, tt := range commonTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			processor, err := createProcessor(tt.input)
-			if err != nil {
-				t.Fatalf("Failed to create %s: %v", processorName, err)
-			}
+			for _, proc := range processorFuncs {
+				wordProcessor := &WordCountProcessor{}
+				lineProcessor := &LineCountProcessor{}
+				charProcessor := &CharacterCountProcessor{}
 
-			wordProcessor := &WordCountProcessor{}
-			lineProcessor := &LineCountProcessor{}
-			charProcessor := &CharacterCountProcessor{}
+				lineProcessors := []LineProcessor{wordProcessor, lineProcessor, charProcessor}
 
-			lineProcessors := []LineProcessor{wordProcessor, lineProcessor, charProcessor}
+				err := proc.procFunc(strings.NewReader(tt.input), lineProcessors)
+				if err != nil {
+					t.Fatalf("%s.Run failed: %v", proc.name, err)
+				}
 
-			err = processor.RunThrough(lineProcessors)
-			if err != nil {
-				t.Fatalf("%s.RunThrough() failed: %v", processorName, err)
-			}
-
-			if wordProcessor.Count() != tt.expectedWords {
-				t.Errorf("WordCountProcessor.Count() = %d, expected %d", wordProcessor.Count(), tt.expectedWords)
-			}
-			if lineProcessor.Count() != tt.expectedLines {
-				t.Errorf("LineCountProcessor.Count() = %d, expected %d", lineProcessor.Count(), tt.expectedLines)
-			}
-			if charProcessor.Count() != tt.expectedChars {
-				t.Errorf("CharacterCountProcessor.Count() = %d, expected %d", charProcessor.Count(), tt.expectedChars)
+				if wordProcessor.Count() != tt.expectedWords {
+					t.Errorf("[%s] WordCountProcessor.Count() = %d, expected %d", proc.name, wordProcessor.Count(), tt.expectedWords)
+				}
+				if lineProcessor.Count() != tt.expectedLines {
+					t.Errorf("[%s] LineCountProcessor.Count() = %d, expected %d", proc.name, lineProcessor.Count(), tt.expectedLines)
+				}
+				if charProcessor.Count() != tt.expectedChars {
+					t.Errorf("[%s] CharacterCountProcessor.Count() = %d, expected %d", proc.name, charProcessor.Count(), tt.expectedChars)
+				}
 			}
 		})
 	}
 }
 
-func TestLineScannerInputProcessor_CommonCases(t *testing.T) {
-	createProcessor := func(input string) (InputProcessor, error) {
-		return NewLineScannerInputProcessor(strings.NewReader(input))
+func TestInputProcessors_ErrorHandling_NilReader(t *testing.T) {
+	for _, procFunc := range readerFuncs {
+		err := procFunc.fn(nil, []LineProcessor{})
+		if err == nil {
+			t.Errorf("%s: Expected error but got none", procFunc.name)
+		}
 	}
-	runProcessorTests(t, "LineScannerInputProcessor", createProcessor)
 }
 
-func TestUpFrontLoadingInputProcessor_CommonCases(t *testing.T) {
-	createProcessor := func(input string) (InputProcessor, error) {
-		return NewUpFrontLoadingInputProcessorFromReader(strings.NewReader(input))
-	}
-	runProcessorTests(t, "UpFrontLoadingInputProcessor", createProcessor)
-}
-
-func TestBufferedInputProcessor_CommonCases(t *testing.T) {
-	createProcessor := func(input string) (InputProcessor, error) {
-		return NewBufferedInputProcessor(strings.NewReader(input))
-	}
-	runProcessorTests(t, "BufferedInputProcessor", createProcessor)
-}
-
-func TestInputProcessors_ErrorHandling(t *testing.T) {
-	t.Run("LineScannerInputProcessor with nil reader", func(t *testing.T) {
-		_, err := NewLineScannerInputProcessor(nil)
-		if err == nil {
-			t.Error("Expected error but got none")
-		}
-	})
-
-	t.Run("UpFrontLoadingInputProcessor with nil reader", func(t *testing.T) {
-		_, err := NewUpFrontLoadingInputProcessorFromReader(nil)
-		if err == nil {
-			t.Error("Expected error but got none")
-		}
-	})
-
-	t.Run("UpFrontLoadingInputProcessor with empty file path", func(t *testing.T) {
-		_, err := NewUpFrontLoadingInputProcessorFromFile("")
-		if err == nil {
-			t.Error("Expected error but got none")
-		}
-	})
-
-	t.Run("BufferedInputProcessor with nil reader", func(t *testing.T) {
-		_, err := NewBufferedInputProcessor(nil)
-		if err == nil {
-			t.Error("Expected error but got none")
-		}
-	})
-
-	t.Run("MmapInputProcessor with empty file path", func(t *testing.T) {
-		_, err := NewMmapInputProcessor("")
-		if err == nil {
-			t.Error("Expected error but got none")
-		}
-	})
-}
-
-func TestInputProcessors_WithErrorReader(t *testing.T) {
+func TestInputProcessors_ErrorHandling_ErrorReader(t *testing.T) {
 	errorReader := &errorReader{}
-
-	tests := []struct {
-		name       string
-		createFunc func() (InputProcessor, error)
-	}{
-		{
-			name: "LineScannerInputProcessor with error reader",
-			createFunc: func() (InputProcessor, error) {
-				return NewLineScannerInputProcessor(errorReader)
-			},
-		},
-		{
-			name: "UpFrontLoadingInputProcessor with error reader",
-			createFunc: func() (InputProcessor, error) {
-				return NewUpFrontLoadingInputProcessorFromReader(errorReader)
-			},
-		},
-		{
-			name: "BufferedInputProcessor with error reader",
-			createFunc: func() (InputProcessor, error) {
-				return NewBufferedInputProcessor(errorReader)
-			},
-		},
+	for _, procFunc := range readerFuncs {
+		err := procFunc.fn(errorReader, []LineProcessor{})
+		if err == nil {
+			t.Errorf("%s: Expected error but got none", procFunc.name)
+		}
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			processor, err := tt.createFunc()
-			if err != nil {
-				t.Fatalf("Failed to create processor: %v", err)
-			}
-
-			wordProcessor := &WordCountProcessor{}
-			lineProcessor := &LineCountProcessor{}
-			charProcessor := &CharacterCountProcessor{}
-
-			lineProcessors := []LineProcessor{wordProcessor, lineProcessor, charProcessor}
-
-			err = processor.RunThrough(lineProcessors)
-			if err == nil {
-				t.Error("Expected error with error reader")
-			}
-		})
+func TestInputProcessors_ErrorHandling_EmptyFilePath(t *testing.T) {
+	for _, procFunc := range fileFuncs {
+		err := procFunc.fn("", []LineProcessor{})
+		if err == nil {
+			t.Errorf("%s: Expected error but got none", procFunc.name)
+		}
 	}
 }
