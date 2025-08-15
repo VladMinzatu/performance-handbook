@@ -53,7 +53,7 @@ func TestWordCountProcessor(t *testing.T) {
 			processor := &WordCountProcessor{}
 
 			for _, line := range tt.lines {
-				processor.Process(line)
+				processor.Process([]byte(line))
 			}
 
 			if got := processor.Count(); got != tt.expected {
@@ -101,7 +101,7 @@ func TestLineCountProcessor(t *testing.T) {
 			processor := &LineCountProcessor{}
 
 			for _, line := range tt.lines {
-				processor.Process(line)
+				processor.Process([]byte(line))
 			}
 
 			if got := processor.Count(); got != tt.expected {
@@ -159,7 +159,7 @@ func TestCharacterCountProcessor(t *testing.T) {
 			processor := &CharacterCountProcessor{}
 
 			for _, line := range tt.lines {
-				processor.Process(line)
+				processor.Process([]byte(line))
 			}
 
 			if got := processor.Count(); got != tt.expected {
@@ -173,8 +173,8 @@ func TestProcessorReset(t *testing.T) {
 	// Resettig the counter should be done through new instance of the processor creation
 	t.Run("word count processor reset", func(t *testing.T) {
 		processor := &WordCountProcessor{}
-		processor.Process("hello world")
-		processor.Process("foo bar")
+		processor.Process([]byte("hello world"))
+		processor.Process([]byte("foo bar"))
 
 		if processor.Count() != 4 {
 			t.Errorf("Expected 4 words, got %d", processor.Count())
@@ -188,8 +188,8 @@ func TestProcessorReset(t *testing.T) {
 
 	t.Run("line count processor reset", func(t *testing.T) {
 		processor := &LineCountProcessor{}
-		processor.Process("line1")
-		processor.Process("line2")
+		processor.Process([]byte("line1"))
+		processor.Process([]byte("line2"))
 
 		if processor.Count() != 2 {
 			t.Errorf("Expected 2 lines, got %d", processor.Count())
@@ -203,8 +203,8 @@ func TestProcessorReset(t *testing.T) {
 
 	t.Run("character count processor reset", func(t *testing.T) {
 		processor := &CharacterCountProcessor{}
-		processor.Process("hello")
-		processor.Process("world")
+		processor.Process([]byte("hello"))
+		processor.Process([]byte("world"))
 
 		if processor.Count() != 10 {
 			t.Errorf("Expected 10 characters, got %d", processor.Count())

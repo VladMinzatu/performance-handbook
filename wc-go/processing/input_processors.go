@@ -170,7 +170,7 @@ func process(reader io.Reader, lineProcessors []LineProcessor) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		for _, processor := range lineProcessors {
-			processor.Process(line)
+			processor.Process([]byte(line))
 		}
 	}
 
