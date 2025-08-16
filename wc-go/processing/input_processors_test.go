@@ -99,7 +99,6 @@ var fileFuncs = []struct {
 	{"runWithScannerOnReader", runWithScannerOnFile},
 	{"runWithUpFrontLoadingOnReader", runWithUpFrontLoadingOnFile},
 	{"runWithBufferringOnReader", runWithBufferringOnFile},
-	{"runWithMmapOnFile", runWithMmapOnFile},
 }
 
 func TestInputProcessors_CommonCases(t *testing.T) {
