@@ -158,7 +158,7 @@ func runWithMmapOnFile(filePath string, lineProcessors []LineProcessor, avoidAll
 	}
 
 	// Memory map the file (read-only)
-	data, err := syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
+	data, err := syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_PRIVATE)
 	if err != nil {
 		return err
 	}
