@@ -43,12 +43,12 @@ func (p *InputProcessor) Run(lineProcessors []LineProcessor) error {
 		if p.FilePath == "" {
 			return fmt.Errorf("file path is required for mmap processor")
 		}
-		return runWithMmapOnFile(p.FilePath, lineProcessors, false)
+		return runWithMmapOnFile(p.FilePath, lineProcessors, true)
 	case ProcessorTypeMmap2:
 		if p.FilePath == "" {
 			return fmt.Errorf("file path is required for mmap2 processor")
 		}
-		return runWithMmapOnFile(p.FilePath, lineProcessors, true)
+		return runWithMmapOnFile(p.FilePath, lineProcessors, false)
 	default:
 		return fmt.Errorf("unknown processor type: %s", p.ProcessorType)
 	}
@@ -83,7 +83,7 @@ func runWithUpFrontLoadingOnReader(reader io.Reader, lineProcessors []LineProces
 	if err != nil {
 		return err
 	}
-	return process(bytes.NewReader(data), lineProcessors)
+	return processBytes(data, lineProcessors)
 }
 
 func runWithUpFrontLoadingOnFile(filePath string, lineProcessors []LineProcessor) error {
@@ -95,7 +95,7 @@ func runWithUpFrontLoadingOnFile(filePath string, lineProcessors []LineProcessor
 	if err != nil {
 		return err
 	}
-	return process(bytes.NewReader(data), lineProcessors)
+	return processBytes(data, lineProcessors)
 }
 
 func runWithBufferringOnReader(reader io.Reader, lineProcessors []LineProcessor) error {
@@ -119,7 +119,7 @@ func runWithBufferringOnReader(reader io.Reader, lineProcessors []LineProcessor)
 		}
 	}
 
-	return process(bytes.NewReader(buffer.Bytes()), lineProcessors)
+	return processBytes(buffer.Bytes(), lineProcessors)
 }
 
 func runWithBufferringOnFile(filePath string, lineProcessors []LineProcessor) error {
@@ -178,7 +178,11 @@ func processBytes(data []byte, lineProcessors []LineProcessor) error {
 	start := 0
 	for i, b := range data {
 		if b == '\n' {
-			line := data[start:i]
+			end := i
+			if end > start && data[end-1] == '\r' {
+				end--
+			}
+			line := data[start:end]
 			for _, processor := range lineProcessors {
 				processor.Process(line)
 			}
