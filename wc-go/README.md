@@ -164,3 +164,98 @@ More than anything, these results show us how the CPU profiler works. A CPU prof
 That explains why the `scanner` version spends 92% of its time doing `Read` syscalls (likely successively reading in chunks of 64KB at a time or so), while the percentages in the other profiles are dominated by the processing of the text data.
 
 In general, a long running system call will likely not even show up in the profile (if there is one or a small number of them), because during that time, the thread is parked and not using CPU cycles.
+
+Next, let's look at the price we are paying for the faster versions of the program in terms of memory:
+
+### Memory profiles
+
+- scanner:
+```
+Showing nodes accounting for 116.46kB, 100% of 116.46kB total
+Showing top 10 nodes out of 56
+      flat  flat%   sum%        cum   cum%
+   28.33kB 24.32% 24.32%    28.33kB 24.32%  runtime.acquireSudog
+   25.41kB 21.82% 46.14%    51.84kB 44.52%  runtime.allocm
+   16.89kB 14.50% 60.65%    16.89kB 14.50%  runtime.malg
+   13.76kB 11.82% 72.47%    13.76kB 11.82%  runtime.makeProfStackFP (inline)
+    8.06kB  6.92% 79.39%    14.39kB 12.36%  github.com/VladMinzatu/performance-handbook/wc-go/processing.process
+    6.33kB  5.43% 84.82%     6.33kB  5.43%  bufio.(*Scanner).Scan
+    5.23kB  4.49% 89.31%     5.23kB  4.49%  time.LoadLocationFromTZData
+    4.39kB  3.77% 93.08%    18.78kB 16.12%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run
+    4.05kB  3.48% 96.56%     4.05kB  3.48%  github.com/pkg/profile.Start.func11
+    4.01kB  3.44%   100%     9.24kB  7.93%  github.com/pkg/profile.Start
+```
+- upfront:
+```
+Showing nodes accounting for 518.47MB, 100% of 518.54MB total
+Dropped 41 nodes (cum <= 2.59MB)
+Showing top 10 nodes out of 11
+      flat  flat%   sum%        cum   cum%
+  518.47MB   100%   100%   518.47MB   100%  os.readFileContents
+         0     0%   100%   518.47MB   100%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run
+         0     0%   100%   518.47MB   100%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run.func1
+         0     0%   100%   518.47MB   100%  github.com/VladMinzatu/performance-handbook/wc-go/processing.(*InputProcessor).Run
+         0     0%   100%   518.47MB   100%  github.com/VladMinzatu/performance-handbook/wc-go/processing.runWithUpFrontLoadingOnFile
+         0     0%   100%   518.47MB   100%  github.com/spf13/cobra.(*Command).Execute (inline)
+         0     0%   100%   518.47MB   100%  github.com/spf13/cobra.(*Command).ExecuteC
+         0     0%   100%   518.47MB   100%  github.com/spf13/cobra.(*Command).execute
+         0     0%   100%   518.48MB   100%  main.main
+         0     0%   100%   518.47MB   100%  os.ReadFile
+```
+- buffering
+```
+Showing nodes accounting for 786438.33kB, 100% of 786523.64kB total
+Dropped 48 nodes (cum <= 3932.62kB)
+Showing top 10 nodes out of 13
+      flat  flat%   sum%        cum   cum%
+  786432kB   100%   100%   786432kB   100%  bytes.growSlice
+    6.33kB 0.0008%   100% 786438.33kB   100%  github.com/VladMinzatu/performance-handbook/wc-go/processing.runWithBufferringOnReader
+         0     0%   100%   786432kB   100%  bytes.(*Buffer).Write
+         0     0%   100%   786432kB   100%  bytes.(*Buffer).grow
+         0     0%   100% 786442.45kB   100%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run
+         0     0%   100% 786438.33kB   100%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run.func1
+         0     0%   100% 786438.33kB   100%  github.com/VladMinzatu/performance-handbook/wc-go/processing.(*InputProcessor).Run
+         0     0%   100% 786438.33kB   100%  github.com/VladMinzatu/performance-handbook/wc-go/processing.runWithBufferringOnFile
+         0     0%   100% 786442.45kB   100%  github.com/spf13/cobra.(*Command).Execute (inline)
+         0     0%   100% 786442.45kB   100%  github.com/spf13/cobra.(*Command).ExecuteC
+```
+- mmap
+```
+Showing nodes accounting for 36.77kB, 100% of 36.77kB total
+Showing top 10 nodes out of 41
+      flat  flat%   sum%        cum   cum%
+   15.25kB 41.47% 41.47%    15.25kB 41.47%  runtime.allocm
+    5.23kB 14.22% 55.69%     5.23kB 14.22%  time.readFile
+    4.13kB 11.22% 66.92%     4.13kB 11.22%  github.com/spf13/pflag.NewFlagSet (inline)
+    4.10kB 11.16% 78.07%     4.10kB 11.16%  os.statNolog
+    4.05kB 11.03% 89.10%     4.05kB 11.03%  github.com/pkg/profile.Start.func11
+    4.01kB 10.90%   100%     9.24kB 25.12%  github.com/pkg/profile.Start
+         0     0%   100%     8.23kB 22.38%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run
+         0     0%   100%     4.10kB 11.16%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run.func1
+         0     0%   100%     4.10kB 11.16%  github.com/VladMinzatu/performance-handbook/wc-go/processing.(*InputProcessor).Run
+         0     0%   100%     4.10kB 11.16%  github.com/VladMinzatu/performance-handbook/wc-go/processing.checkFilePath
+```
+- mmap2
+```
+Showing nodes accounting for 110.79kB, 100% of 110.79kB total
+Showing top 10 nodes out of 50
+      flat  flat%   sum%        cum   cum%
+   35.58kB 32.11% 32.11%    49.34kB 44.54%  runtime.allocm
+   20.15kB 18.19% 50.30%    20.15kB 18.19%  github.com/VladMinzatu/performance-handbook/wc-go/processing.process
+   13.76kB 12.42% 62.72%    13.76kB 12.42%  runtime.makeProfStackFP (inline)
+   12.67kB 11.43% 74.16%    12.67kB 11.43%  runtime.malg
+    8.09kB  7.31% 81.47%     8.09kB  7.31%  runtime.acquireSudog
+    4.39kB  3.96% 85.42%    24.53kB 22.15%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run
+    4.08kB  3.68% 89.10%     4.08kB  3.68%  regexp.compile
+    4.05kB  3.66% 92.76%     4.05kB  3.66%  github.com/pkg/profile.Start.func11
+    4.01kB  3.62% 96.38%     4.01kB  3.62%  github.com/pkg/profile.Start
+    4.01kB  3.62%   100%     4.01kB  3.62%  runtime.(*timers).addHeap
+```
+
+The picture here is quite simple and not at all surprising: when we're reading the whole file into memory before processing (regardless of the strategy), we get the expected ~500MB memory footprint for our whole process.
+
+And in the other variants, the memory footprint if very tiny, even dominated by the Go runtime itself (but tiny, most importantly).
+
+But what's going on in the `mmap` versions? We're seeing a small memory footprint, but that can't be the whole story. The file contents are mapped directly into the process’s virtual address space by the kernel and not heap-allocated. So pprof (and Go's allocator) don't see the contents as heap objects.
+
+In the background, pages of the file are loaded on demand via page faults when accessed. For our use case, the whole file size will likely be used in terms of memory space, and if the memory is insufficient for that, the kernel has to do more work to manage that. But we'll need other tools to observe this going on.
