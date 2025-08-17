@@ -161,6 +161,6 @@ Showing top 10 nodes out of 55
 
 More than anything, these results show us how the CPU profiler works. A CPU profile samples where the program spends CPU cycles. I.e., importantly, that is not wall time that is being reported. 
 
-That explains why the `scanner` version spends 92% of its time doing `Read` syscalls, while the percentages in the other profiles are dominated by the processing of the text data.
+That explains why the `scanner` version spends 92% of its time doing `Read` syscalls (likely successively reading in chunks of 64KB at a time or so), while the percentages in the other profiles are dominated by the processing of the text data.
 
 In general, a long running system call will likely not even show up in the profile (if there is one or a small number of them), because during that time, the thread is parked and not using CPU cycles.
