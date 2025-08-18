@@ -6,6 +6,6 @@ import (
 )
 
 func main() {
-	defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+	defer profile.Start(profile.TraceProfile, profile.ProfilePath(".")).Stop()
 	cmd.Run()
 }

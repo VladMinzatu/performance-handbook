@@ -57,7 +57,7 @@ And now for the different versions of our own program:
 ```
 
 It's fair to say we didn't break new ground here, but what can we notice in these initial results?
-- First, using `mmap` may feel clever, but it's probably not providing much benefit for our use case (it performs just about the same as reading everything up front). In fact, afaik, the original `wc` implementation uses `read()` syscalls to stream through the file in big contiguous chunks. Makes sense why that would be the most efficient way to go, when also considering that mmap could incur page faults. We'll need to dig into that a bit more.
+- First, using `mmap` may feel clever, but it's probably not providing much benefit for our use case (it performs just about the same as reading everything up front). In fact, afaik, the original `wc` implementation uses `read()` syscalls to stream through the file in big contiguous chunks. Makes sense why that would be the most efficient way to go, when also considering that mmap could incur page faults. We'll need to dig into that a bit more. In general, it is known that performance benefits for memory mapped I/O are most likely when performing releated random access on large files. 
 - Looking at the time differences between the runs of different `wc-go` variants, it is quite clear to see that there is a significant difference between the variants that perform additional allocations for each line before processing it and those who don't. Isn't it more than you'd expect? Maybe. In any case, interesting to observe if you've programmed in languages that steer you towards instantiating objects very liberally.
 - And why are **all** `wc-go` variants considerably slower than the original? I would put that down to the Go runtime overhead and perhaps lack of some other compiler optimizations. We'll try to uncover that in more detail as well.
 
@@ -163,7 +163,7 @@ More than anything, these results show us how the CPU profiler works. A CPU prof
 
 That explains why the `scanner` version spends 92% of its time doing `Read` syscalls (likely successively reading in chunks of 64KB at a time or so), while the percentages in the other profiles are dominated by the processing of the text data.
 
-In general, a long running system call will likely not even show up in the profile (if there is one or a small number of them), because during that time, the thread is parked and not using CPU cycles.
+In general, a long running system call will likely not even show up in the profile (if there is just one or a small number of them), because during that time, the thread is parked and not using CPU cycles.
 
 Next, let's look at the price we are paying for the faster versions of the program in terms of memory:
 
@@ -259,3 +259,27 @@ And in the other variants, the memory footprint if very tiny, even dominated by 
 But what's going on in the `mmap` versions? We're seeing a small memory footprint, but that can't be the whole story. The file contents are mapped directly into the process’s virtual address space by the kernel and not heap-allocated. So pprof (and Go's allocator) don't see the contents as heap objects.
 
 In the background, pages of the file are loaded on demand via page faults when accessed. For our use case, the whole file size will likely be used in terms of memory space, and if the memory is insufficient for that, the kernel has to do more work to manage that. But we'll need other tools to observe this going on.
+
+### Trace
+
+By changing the first line in our `main` function to the following, we'll be able to obtain a trace file from our execution in the various runs:
+```
+defer profile.Start(profile.TraceProfile, profile.ProfilePath(".")).Stop()
+```
+
+A trace is handy because it not only shows us what consumes CPU, Memory and other resources, but also how the program executes and these resources are consumed over time. And Go perf tooling comes with a handy web UI for inspcting this trace output, which can be run like so:
+```
+go tool trace trace.out
+```
+
+As an example, let's compare our `scanner` implementation to our `upfront` implementation. 
+
+Here's the `scanner` outcome:
+![Trace Scanner](assets/go-trace-scanner.webp)
+And here is the `upfront` one:
+![Trace Upfront](assets/go-trace-upfront.webp)
+
+The UI allows us to zoom in and out and observe quite detailed information about what happenes in our program as it's running. Here are some things we observe, that can be seen even in these screenshots (once pointed out, at least):
+- With the `scanner` approach, we can see the expected pattern of making frequent evenly spaced out system calls to read data, followed by brief blocking and processing times. In the `upfront` run, we can see that a read system call is done in the beginning, followed by a gap where our goroutine is blocked, and then processing of the data is done by our main goroutine without much else going on. We also see the GC doing a lot more work, frequently popping up in the `scanner` approach, while GC activity is much less frequent in the other run.
+- Consequently, we're not surprised by what we see happening with the heap (near the top of the UI). In the `scanner` version, the overall heap size fluctuates, but is kept low at all times. Whereas in the `upfront` run, the heap is filled to a size roughly equalling the file size in the beginning (between the syscall and our goroutine starting processing) and then stays at that level throughout the process' lifetime. 
+- The UI also shows us goroutine and thread counts near the top, but we don't have anything interesting going on there, as both versions of our program just have the one main goroutine doing all the work.
