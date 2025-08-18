@@ -159,7 +159,7 @@ Showing top 10 nodes out of 55
          0     0% 98.68%     4040ms 88.60%  github.com/VladMinzatu/performance-handbook/wc-go/cmd.Run
 ```
 
-More than anything, these results show us how the CPU profiler works. A CPU profile samples where the program spends CPU cycles. I.e., importantly, that is not wall time that is being reported. 
+More than anything, these results show us how the CPU profiler works. A CPU profile samples where the program spends CPU cycles. I.e., importantly, that is not wall time that is being reported. This is important to keep in mind generally when profiling (and not just CPU profiling) - these techniques are typically useful in identifying bottlenecks and making comparisons, but be very careful with interpreting and comparing the raw numbers!
 
 That explains why the `scanner` version spends 92% of its time doing `Read` syscalls (likely successively reading in chunks of 64KB at a time or so), while the percentages in the other profiles are dominated by the processing of the text data.
 
