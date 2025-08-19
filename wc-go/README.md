@@ -342,3 +342,51 @@ But wait, we only paid for one major fault in order to cache our whole 500MB fil
 
 ### bpftrace
 
+First of all, we can count the major faults with a bpftrace one-liner like so, just as a confirmation that we can trust what we're seeing:
+```
+sudo bpftrace -e 'software:major-faults { @[comm] = count(); }'
+```
+If we run our program again, sure enough, bpftrace gives us this output (I've recreated our test file in the meantime):
+```
+@[wc-go]: 1
+```
+
+Ok, great, but what we'd really like to do is get quantitative at this point and understand what kind of overhead `mmap` really incurs in our use case. With `bpftrace`, we can get a lot more insights. For example, this one-liner:
+```
+sudo bpftrace -e 'kprobe:handle_mm_fault { @ts[tid] = nsecs;} kretprobe:handle_mm_fault /@ts[tid]/ {@lat[comm] = hist(nsecs - @ts[tid]); delete(@ts[tid]);}'
+```
+can give us a histogram of times spent handling memory map faults. And this is the output it gives:
+```
+...
+@lat[wc-go]: 
+[256, 512)            30 |                                                    |
+[512, 1K)           4432 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[1K, 2K)            3768 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        |
+[2K, 4K)             342 |@@@@                                                |
+[4K, 8K)              30 |                                                    |
+[8K, 16K)           2164 |@@@@@@@@@@@@@@@@@@@@@@@@@                           |
+[16K, 32K)          1775 |@@@@@@@@@@@@@@@@@@@@                                |
+[32K, 64K)           196 |@@                                                  |
+[64K, 128K)           18 |                                                    |
+[128K, 256K)           4 |                                                    |
+[256K, 512K)           6 |                                                    |
+[512K, 1M)             2 |                                                    |
+[1M, 2M)               2 |                                                    |
+[2M, 4M)               0 |                                                    |
+[4M, 8M)               1 |                                                    |
+...
+```
+
+we can see that the majority of the latencies are around the microsecond mark. I have an SSD in this machine, and we'd expect an I/O read to be in the tens to hundreds of microseconds. And some handle calls do take that long. That 4-8ms call looks like it must have done some heavy lifting.
+
+Nevertheless, very few high latency fault handle invocations. Let's note that what we see here sums up to about 30ms. As it tunrs out, Linux has some more tricks up its sleeve that give us a boost here, namely a mechanism called "readahead". This detects that we are going through our file sequentially and loads more data than needed when it seems like we will be accessing it. Let's verify if this is indeed what is happening, by running:
+```
+sudo bpftrace -e 'kprobe:page_cache_async_ra { @[comm] = count(); }'
+```
+And sure enogh, the output is:
+```
+@[wc-go]: 4147
+```
+There it is, doing the work so we don't bump up against those pesky major faults. And if we run it again on the same file, we get no more readaheads, because, of course, the file is already cached as we saw before.
+
+
