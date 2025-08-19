@@ -321,7 +321,7 @@ and it will give us the following output:
        0.123196000 seconds sys
 
 ```
-We're getting some interesting insights that we didn't have before, like the user vs. sys time. But more to our point, we get a clear counter for the number of minor faults vs major faults. This may look a bit surprising at firs. Major faults happen when disk I/O is done, but a minor fault only means page tables being updated in memory, because the data itself for the page is already cached, so this is much faster.
+We're getting some interesting insights that we didn't have before, like the user vs. sys time. But more to our point, we get a clear counter for the number of minor faults vs major faults. This may look a bit surprising at first. Major faults happen when disk I/O is done, but a minor fault only means page tables being updated in memory, because the data itself for the page is already cached, so this is much faster.
 
 What's more, if we run the same command again, we get the following output:
 ```
@@ -338,7 +338,7 @@ Performance counter stats for './wc-go -p mmap shakespeare100.txt':
 ```
 You can probably guess what happened here: the data is still cached from the previous run because the kernel hasn't had a reason to clear those pages, so we're getting a nice boost in our runtime (remember that `mmap` is meant for repeated random access in large files primarily - we just happened to be doing it in separate runs of our process...and we're also not accessing randomly).
 
-But wait, we only paid for one major fault in order to cache our whole 500MB file? That sounds like a deal a little too good to be true. We need to dig deeper and collect some more numbers. Enter [bpftrace](https://github.com/bpftrace/bpftrace).
+But getting back to the first run, we only paid for one major fault in order to cache our whole 500MB file? That sounds like a deal a little too good to be true. We need to dig deeper and collect some more numbers. Enter [bpftrace](https://github.com/bpftrace/bpftrace).
 
 ### bpftrace
 
@@ -377,9 +377,9 @@ can give us a histogram of times spent handling memory map faults. And this is t
 ...
 ```
 
-we can see that the majority of the latencies are around the microsecond mark. I have an SSD in this machine, and we'd expect an I/O read to be in the tens to hundreds of microseconds. And some handle calls do take that long. That 4-8ms call looks like it must have done some heavy lifting.
+we can see that the majority of the latencies are around the microsecond mark. I have an SSD in this machine, and we'd expect an I/O read to be in the tens to hundreds of microseconds. And some handler calls do take that long. That 4-8ms call looks like it must have done some heavy lifting.
 
-Nevertheless, very few high latency fault handle invocations. Let's note that what we see here sums up to about 30ms. As it tunrs out, Linux has some more tricks up its sleeve that give us a boost here, namely a mechanism called "readahead". This detects that we are going through our file sequentially and loads more data than needed when it seems like we will be accessing it. Let's verify if this is indeed what is happening, by running:
+Nevertheless, very few high latency fault handler invocations. Let's note that what we see here sums up to about 30ms. As it tunrs out, Linux has some more tricks up its sleeve that give us a boost here, namely a mechanism called "readahead". This detects that we are going through our file sequentially and loads more data than needed when it seems like we will be accessing it. Let's verify if this is indeed what is happening, by running:
 ```
 sudo bpftrace -e 'kprobe:page_cache_async_ra { @[comm] = count(); }'
 ```
