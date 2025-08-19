@@ -295,3 +295,50 @@ However, it's important to keep in mind that even the Go trace tool's view of th
 The Go tracer doesn't notice at all when this is potentially happening, because the mechanism here is not a syscall, it's an exception (a page fault exception, specifically). When that happens, the goroutine never calls into the runtime to say “I’m blocked.”. So the Go scheduler doesn't context-switch away from the goroutine, so no goroutine state change event is emitted into the trace. To Go, it looks like the goroutine was on the CPU and running normally. At the hardware level though, the thread is effectively paused while the kernel handles the fault, but it is not blocked in the sense where the scheduler would mark it as sleeping. During that time, though, the kernel is indeed executing code on behalf of our process (in the page fault handler, possibly doing disk I/O !!!).
 
 This is an example of why, our complete performance analysis toolkit needs to include tools that go beyond analysing the peformance of what is visible to the Go runtime - we need OS level tools.
+
+## Linux and BPF Tools
+
+Let's continue looking into the `mmap` version behaviour. As we saw, whatever file reads happen (on page faults), they are invisible to the Go runtime and thus, also to the tracer. As far as it can tell, our goroutine is going along, never blocked, reading from memory, processing and writing back to memory. But we suspect that there's much more to the story - we know there's more complex things going on under the hood. How can we get some visibility into that?
+
+### Standard Linux perf tools
+
+On Linux, it makes sense to start with `perf` tools. How can it help us out here? We can run:
+```
+sudo perf stat -e page-faults,minor-faults,major-faults ./wc-go -p mmap ~/shakespeare100.txt 
+```
+
+and it will give us the following output:
+```
+ Performance counter stats for './wc-go -p mmap shakespeare100.txt':
+
+             8,605      page-faults                                                           
+             8,601      minor-faults                                                          
+                 1      major-faults                                                          
+
+       3.831913027 seconds time elapsed
+
+       3.719923000 seconds user
+       0.123196000 seconds sys
+
+```
+We're getting some interesting insights that we didn't have before, like the user vs. sys time. But more to our point, we get a clear counter for the number of minor faults vs major faults. This may look a bit surprising at firs. Major faults happen when disk I/O is done, but a minor fault only means page tables being updated in memory, because the data itself for the page is already cached, so this is much faster.
+
+What's more, if we run the same command again, we get the following output:
+```
+Performance counter stats for './wc-go -p mmap shakespeare100.txt':
+
+             8,614      page-faults                                                           
+             8,614      minor-faults                                                          
+                 0      major-faults                                                          
+
+       3.617099471 seconds time elapsed
+
+       3.578519000 seconds user
+       0.049048000 seconds sys
+```
+You can probably guess what happened here: the data is still cached from the previous run because the kernel hasn't had a reason to clear those pages, so we're getting a nice boost in our runtime (remember that `mmap` is meant for repeated random access in large files primarily - we just happened to be doing it in separate runs of our process...and we're also not accessing randomly).
+
+But wait, we only paid for one major fault in order to cache our whole 500MB file? That sounds like a deal a little too good to be true. We need to dig deeper and collect some more numbers. Enter [bpftrace](https://github.com/bpftrace/bpftrace).
+
+### bpftrace
+
