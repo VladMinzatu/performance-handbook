@@ -389,4 +389,10 @@ And sure enogh, the output is:
 ```
 There it is, doing the work so we don't bump up against those pesky major faults. And if we run it again on the same file, we get no more readaheads, because, of course, the file is already cached as we saw before.
 
+## System-level comparison: `mmap` vs `upfront`
+
+We went rather deep on `mmap`, but what about the other versions of our code? Now that we've run quite a few kinds of tests, let's focus on the system-level view of 2 versions of our code: `upfront` and `mmap`. These were the 2 best performing versions under our test conditions: we're using a fairly large file, but clearly one that fits quite comfortably in memory. If the file were much larger, `mmap` would have more work to do (more higher latency operations involved) and `upfront` wouldn't be feasible, so we'd have to compare it against `scanner`. But for now, let's focus on this use case with `mmap` vs. `upfront`.
+
+### perf tools
+
 
