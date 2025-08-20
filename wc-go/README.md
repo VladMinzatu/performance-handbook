@@ -438,4 +438,34 @@ Now let's have a deeper look into this comparison using bpftrace.
 
 ### bpftrace
 
+First, we can observe the much larger number of minor page faults in the `upfront` version with this one-liner:
+```
+sudo bpftrace -e 'software:minor-faults { @[comm] = count(); }'
+```
+
+And recalling the histogram for handle_mm_fault latencies for the mmap version from before, let's run the same for the `upfront` version for comparison:
+```
+@lat[wc-go]: 
+[128, 256)            17 |                                                    |
+[256, 512)        109975 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[512, 1K)          16412 |@@@@@@@                                             |
+[1K, 2K)            2578 |@                                                   |
+[2K, 4K)            3671 |@                                                   |
+[4K, 8K)             399 |                                                    |
+[8K, 16K)            126 |                                                    |
+[16K, 32K)           163 |                                                    |
+[32K, 64K)            39 |                                                    |
+[64K, 128K)            2 |                                                    |
+[128K, 256K)           2 |                                                    |
+[256K, 512K)           0 |                                                    |
+[512K, 1M)             0 |                                                    |
+[1M, 2M)               0 |                                                    |
+[2M, 4M)               0 |                                                    |
+[4M, 8M)               0 |                                                    |
+[8M, 16M)              0 |                                                    |
+[16M, 32M)             1 |                                                    |
+```
+
+The difference is significant: many more page faults, but all grouped in the well-sub-microsecond area. These page faults are not the ones doing the heavy lifting in this implementation.
+
 
