@@ -395,4 +395,47 @@ We went rather deep on `mmap`, but what about the other versions of our code? No
 
 ### perf tools
 
+Let's start with the big picture:
+```
+sudo perf stat -d ./wc-go -p mmap ~/shakespeare100.txt
+```
+
+This gives us the following output:
+```
+Performance counter stats for './wc-go -p mmap ~/shakespeare100.txt':
+
+          3,870.47 msec task-clock                       #    1.001 CPUs utilized             
+               622      context-switches                 #  160.704 /sec                      
+                32      cpu-migrations                   #    8.268 /sec                      
+             8,619      page-faults                      #    2.227 K/sec                     
+...
+       3.865924351 seconds time elapsed
+
+       3.726353000 seconds user
+       0.148212000 seconds sys
+```
+
+and for the upfront version:
+```
+ Performance counter stats for './wc-go -p upfront ~/shakespeare100.txt':
+
+          3,932.69 msec task-clock                       #    0.999 CPUs utilized             
+               601      context-switches                 #  152.822 /sec                      
+                20      cpu-migrations                   #    5.086 /sec                      
+           133,378      page-faults                      #   33.915 K/sec                     
+...
+       3.937098892 seconds time elapsed
+
+       3.630355000 seconds user
+       0.306126000 seconds sys
+```
+
+What jumps out here is that the sys time in the upfront implementation is roughly double compared to `mmap`. This could have something to do with the fact that the `upfront` implementation also has to copy the data from page cache to user buffers, which costs CPU (memcpy in the kernel). We also see way more page-faults reported for the `upfront` version, which looks surprising. This might have something to do with how page-faults are counted here, as again, the `upfront` version can fault on both the file pages and the buffer pages.
+
+We can run a `sudo perf record -g ./wc-go -p upfront ~/shakespeare100.txt` followed by `sudo perf report` (and similarly for `mmap`) and observe where exactly the upfront version spends more time in syscalls and we will indeed see vfs_read dominating there, but also quite a bit of time on *_copy_to_user.
+
+Now let's have a deeper look into this comparison using bpftrace.
+
+### bpftrace
+
 
