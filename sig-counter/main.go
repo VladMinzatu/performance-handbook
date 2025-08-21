@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,7 +28,7 @@ func main() {
 				fmt.Println("Resetting ticker count to zero")
 				ticker.Reset()
 			case syscall.SIGTERM, syscall.SIGINT:
-				log.Println("received", s, "— shutting down")
+				fmt.Println("received", s, "— shutting down")
 				cancel()
 				return
 			}
