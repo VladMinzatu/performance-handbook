@@ -20,3 +20,8 @@ Showing nodes accounting for 10ms, 100% of 10ms total
 Not really surprisingly, there isn't much going on. As far as the profile can tell, we're spending all our CPU time blocked, waiting for timers and signals.
 
 The Go runtime implements both timers and signal handling by sitting in a platform specific system call, which is `kevent` in macOS (it would probably be an `epoll*` on Linux).
+
+Next, let's have a look at a trace under similar "load":
+![Trace](assets/trace-sig.webp)
+
+Much like matter in our universe, actual activity here is few and far between. 
