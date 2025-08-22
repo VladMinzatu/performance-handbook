@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	defer profile.Start(profile.TraceProfile, profile.ProfilePath(".")).Stop()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -20,7 +20,12 @@ func main() {
 	signal.Notify(sigs, syscall.SIGUSR1, syscall.SIGUSR2, syscall.SIGTERM, syscall.SIGINT)
 
 	ticker := NewTicker()
-	go ticker.Run(ctx)
+	stop := make(chan struct{})
+
+	go func() {
+		ticker.Run(ctx)
+		close(stop)
+	}()
 
 	for {
 		select {
@@ -34,9 +39,11 @@ func main() {
 			case syscall.SIGTERM, syscall.SIGINT:
 				fmt.Println("received", s, "— shutting down")
 				cancel()
+				<-stop // Wait for ticker to stop
 				return
 			}
 		case <-ctx.Done():
+			<-stop // Wait for ticker to stop
 			return
 		}
 	}
