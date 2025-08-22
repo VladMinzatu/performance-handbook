@@ -6,9 +6,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/pkg/profile"
 )
 
 func main() {
+	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
