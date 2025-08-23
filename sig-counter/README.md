@@ -54,3 +54,29 @@ to see the system calls made by our process. Every second we see a small batch o
 
 All timers, including the `time.Ticker` we are using end up in blocking `epoll_pwait` calls. And `futex` is what Go uses for the parking/unparking of threads and goroutines. We're seeing some other system calls happen at times, like `getpid` and `sched_yield` as the runtime is always doing its own bookkeeping in the background.
 
+## bpftrace
+
+We can get a nice clean view of this using a bpftrace one liner as well:
+```
+sudo bpftrace -e 'tracepoint:syscalls:sys_enter_* /pid == $PID/ { @sys[probe] = count(); }'
+```
+
+This comes back with the following:
+```
+@sys[tracepoint:syscalls:sys_enter_tgkill]: 1
+@sys[tracepoint:syscalls:sys_enter_clone]: 1
+@sys[tracepoint:syscalls:sys_enter_exit_group]: 1
+@sys[tracepoint:syscalls:sys_enter_getpid]: 1
+@sys[tracepoint:syscalls:sys_enter_sched_yield]: 1
+@sys[tracepoint:syscalls:sys_enter_gettid]: 2
+@sys[tracepoint:syscalls:sys_enter_sigaltstack]: 2
+@sys[tracepoint:syscalls:sys_enter_rt_sigprocmask]: 3
+@sys[tracepoint:syscalls:sys_enter_write]: 4
+@sys[tracepoint:syscalls:sys_enter_rt_sigreturn]: 5
+@sys[tracepoint:syscalls:sys_enter_epoll_pwait]: 19
+@sys[tracepoint:syscalls:sys_enter_nanosleep]: 69
+@sys[tracepoint:syscalls:sys_enter_futex]: 97
+```
+
+Similar to before, but in a summary, we can see some of our signal related syscalls corresponding to the signals we sent during testing, but we can also see mostly sleep related calls and internal bookkeeping and scheduling calls.
+
