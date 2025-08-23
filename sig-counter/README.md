@@ -34,3 +34,23 @@ However, with some very careful zooming, we can observe a few things:
 ## Linux Perf
 
 Now that we've seen the Go runtime's view of things, let's look at it from the inside with Linux perf tools.
+
+We can run 
+```
+perf trace -p $PID
+```
+
+to see the system calls made by our process. Every second we see a small batch of `futex` and `epoll_pwait` calls being reported:
+```
+3015.067 (987.231 ms): sig-counter/13151 futex(uaddr: 0x1ad110, op: WAIT|PRIVATE_FLAG, utime: 0x4000029e98)    = -1 ETIMEDOUT (Connection timed out)
+  3001.077 (1002.591 ms): sig-counter/13156  ... [continued]: epoll_pwait())                                      = 0
+  4002.354 (         ): sig-counter/13151 nanosleep(rqtp: 0x4000029ee8)                                      ...
+  4003.727 ( 0.044 ms): sig-counter/13156 futex(uaddr: 0x4000049158, op: WAKE|PRIVATE_FLAG, val: 1)             = 1
+  3001.149 (1002.679 ms): sig-counter/13153  ... [continued]: futex())                                            = 0
+  4003.855 (         ): sig-counter/13156 futex(uaddr: 0x4000049958, op: WAIT|PRIVATE_FLAG)                  ...
+  4002.354 (22.664 ms): sig-counter/13151  ... [continued]: nanosleep())                                        = 0
+  4003.864 (         ): sig-counter/13153 epoll_pwait(epfd: 3<anon_inode:[eventpoll]>, events: 0x400005d4f8, maxevents: 128, timeout: 996) ...
+```
+
+All timers, including the `time.Ticker` we are using end up in blocking `epoll_pwait` calls. And `futex` is what Go uses for the parking/unparking of threads and goroutines. We're seeing some other system calls happen at times, like `getpid` and `sched_yield` as the runtime is always doing its own bookkeeping in the background.
+
