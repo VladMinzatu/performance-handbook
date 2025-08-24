@@ -80,3 +80,9 @@ This comes back with the following:
 
 Similar to before, but in a summary, we can see some of our signal related syscalls corresponding to the signals we sent during testing, but we can also see mostly sleep related calls and internal bookkeeping and scheduling calls.
 
+We can also capture all the signals being delivered to our process with this bpftrace one-liner:
+```
+sudo bpftrace -e 'tracepoint:signal:signal_deliver /pid == $PID/ { printf("sig=%d comm=%s ts=%llu\n", args->sig, comm, nsecs);} '
+```
+
+We'll see one line for each signal we send, with sig=10 for USR1 and sig=12 for USR2.
