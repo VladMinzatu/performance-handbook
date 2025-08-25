@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/pkg/profile"
 )
 
 type User struct {
@@ -16,6 +17,8 @@ type User struct {
 }
 
 func main() {
+	defer profile.Start(profile.TraceProfile, profile.ProfilePath(".")).Stop()
+
 	db, err := sql.Open("sqlite3", "./test.db")
 	if err != nil {
 		log.Fatal(err)
