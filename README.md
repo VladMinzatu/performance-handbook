@@ -9,4 +9,4 @@ I will mainly be using Linux performance and debugging tools, eBPF tools like bp
 The individual projects will be in subdirectories starting from here, and each will have its own README describing the project and test outcomes. For example:
 - [wc-go](./wc-go)
 - [sig-counter](./sig-counter)
-
+- [db-query](./db-query)
