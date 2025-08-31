@@ -43,4 +43,5 @@ func (fo *FileOutput) Write(events <-chan model.LogEntry) error {
 			fmt.Printf("failed to write to file: %v\n", err)
 		}
 	}
+	return nil
 }
