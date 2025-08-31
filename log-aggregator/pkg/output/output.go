@@ -37,15 +37,11 @@ func (fo *FileOutput) Write(events <-chan model.LogEntry) error {
 			fmt.Printf("failed to marshal event: %v\n", err)
 			continue
 		}
-		_, err = file.Write(append(eventJson, '\n'))
-		if err != nil {
-			return fmt.Errorf("failed to write to file: %w", err)
-		}
-
 		_, err = writer.WriteString(string(eventJson) + "\n")
 		if err != nil {
 			fmt.Printf("failed to write to file: %v\n", err)
 		}
 	}
+
 	return nil
 }
