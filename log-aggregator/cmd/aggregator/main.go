@@ -14,12 +14,9 @@ func main() {
 	events := make(chan model.LogEntry, bufferSize)
 
 	receiver := receiver.NewUnixSocketReceiver(socketPath, "local-socket")
-
-	go func() {
-		if err := receiver.Receive(events); err != nil {
-			panic(err)
-		}
-	}()
+	if err := receiver.Receive(events); err != nil {
+		panic(err)
+	}
 
 	go func() {
 		out := output.NewFileOutput(outputFilePath)
