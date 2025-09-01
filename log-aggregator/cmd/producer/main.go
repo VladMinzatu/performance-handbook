@@ -1,38 +1,24 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net"
-	"time"
+	"os"
 
-	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/model"
+	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/ipc"
 )
 
-const socketPath = "/tmp/log.sock"
-
 func main() {
-	conn, err := net.Dial("unix", socketPath)
-	if err != nil {
-		panic(err)
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <ipc-type>\n", os.Args[0])
+		os.Exit(1)
 	}
-	defer conn.Close()
+	ipcType := os.Args[1]
 
-	for i := 0; i < 5; i++ {
-		entry := model.LogEntry{
-			Source:    "producer",
-			Timestamp: time.Now().Unix(),
-			Level:     "INFO",
-			Message:   fmt.Sprintf("producer log %d", i),
-		}
-		b, err := json.Marshal(entry)
-		if err != nil {
-			panic(err)
-		}
-		_, err = conn.Write(append(b, '\n'))
-		if err != nil {
-			panic(err)
-		}
-		time.Sleep(1 * time.Second)
+	prod, ok := ipc.GetProducer(ipcType)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Unknown IPC type: %s\n", ipcType)
+		os.Exit(1)
 	}
+
+	prod.Run()
 }

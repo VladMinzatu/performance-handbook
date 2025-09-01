@@ -1,46 +1,24 @@
 package main
 
 import (
+	"fmt"
 	"os"
-	"os/signal"
 
-	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/model"
-	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/output"
-	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/receiver"
+	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/ipc"
 )
 
-const bufferSize = 100
-const socketPath = "/tmp/log.sock"
-const outputFilePath = "aggregated_logs.jsonl"
-
 func main() {
-	events := make(chan model.LogEntry, bufferSize)
-	done := make(chan struct{})
-
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
-		close(events)
-	}()
-
-	go launchFileOutputCollector(events, done)
-	go launchUnixSocketReceiver(events)
-
-	<-done
-}
-
-func launchFileOutputCollector(events <-chan model.LogEntry, done chan struct{}) {
-	out := output.NewFileOutput(outputFilePath)
-	defer close(done)
-	if err := out.Write(events); err != nil {
-		panic(err)
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <ipc-type>\n", os.Args[0])
+		os.Exit(1)
 	}
-}
+	ipcType := os.Args[1]
 
-func launchUnixSocketReceiver(events chan<- model.LogEntry) {
-	receiver := receiver.NewUnixSocketReceiver(socketPath, "local-socket")
-	if err := receiver.Receive(events); err != nil {
-		panic(err)
+	agg, ok := ipc.GetAggregator(ipcType)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Unknown IPC type: %s\n", ipcType)
+		os.Exit(1)
 	}
+
+	agg.Run()
 }
