@@ -13,12 +13,11 @@ type Receiver interface {
 }
 
 type UnixSocketReceiver struct {
-	Path   string
-	Source string
+	Path string
 }
 
-func NewUnixSocketReceiver(path, source string) *UnixSocketReceiver {
-	return &UnixSocketReceiver{Path: path, Source: source}
+func NewUnixSocketReceiver(path string) *UnixSocketReceiver {
+	return &UnixSocketReceiver{Path: path}
 }
 
 func (u *UnixSocketReceiver) Receive(events chan<- model.LogEntry) error {
@@ -39,12 +38,47 @@ func (u *UnixSocketReceiver) Receive(events chan<- model.LogEntry) error {
 			scanner := bufio.NewScanner(c)
 			for scanner.Scan() {
 				payload := scanner.Text()
-				var logEntry model.LogEntry
-				if err := json.Unmarshal([]byte(payload), &logEntry); err == nil {
-					events <- logEntry
-					continue
-				}
+				unmarshalAndWrite(payload, events)
 			}
 		}(conn)
+	}
+}
+
+type UnixDatagramSocketReceiver struct {
+	socketPath string
+}
+
+func NewUnixDatagramSocketReceiver(socketPath string) *UnixDatagramSocketReceiver {
+	return &UnixDatagramSocketReceiver{socketPath: socketPath}
+}
+
+func (u *UnixDatagramSocketReceiver) Receive(events chan<- model.LogEntry) error {
+	addr, err := net.ResolveUnixAddr("unixgram", u.socketPath)
+	if err != nil {
+		return err
+	}
+	conn, err := net.ListenUnixgram("unixgram", addr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	conn.SetReadBuffer(1 << 20) // 1MB
+
+	buf := make([]byte, 8192)
+	for {
+		n, _, err := conn.ReadFromUnix(buf)
+		if err != nil {
+			return err
+		}
+		payload := string(buf[:n])
+		unmarshalAndWrite(payload, events)
+	}
+}
+
+func unmarshalAndWrite(payload string, events chan<- model.LogEntry) {
+	var logEntry model.LogEntry
+	if err := json.Unmarshal([]byte(payload), &logEntry); err == nil {
+		events <- logEntry
 	}
 }

@@ -16,7 +16,11 @@ type IPC struct {
 var ipcTypes = map[string]IPC{
 	"unix_socket_stream": {
 		producer:   NewProducer(publisher.NewUnixSocketPublisher(socketPath)),
-		aggregator: NewAggregator(receiver.NewUnixSocketReceiver(socketPath, "local-socket")),
+		aggregator: NewAggregator(receiver.NewUnixSocketReceiver(socketPath)),
+	},
+	"unix_socket_datagram": {
+		producer:   NewProducer(publisher.NewUnixDatagramSocketPublisher(socketPath)),
+		aggregator: NewAggregator(receiver.NewUnixDatagramSocketReceiver(socketPath)),
 	},
 }
 
