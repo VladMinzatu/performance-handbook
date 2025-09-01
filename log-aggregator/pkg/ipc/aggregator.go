@@ -9,24 +9,20 @@ import (
 	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/receiver"
 )
 
-type Aggregator interface {
-	Run()
-}
+const aggregatorBufferSize = 100
 
-type UnixSocketAggregator struct {
+type Aggregator struct {
 	receiver receiver.Receiver
-	output   output.Output
 }
 
-func NewUnixSocketAggregator() *UnixSocketAggregator {
-	return &UnixSocketAggregator{
-		receiver: receiver.NewUnixSocketReceiver(socketPath, "local-socket"),
-		output:   output.NewFileOutput(outputFilePath),
+func NewAggregator(receiver receiver.Receiver) *Aggregator {
+	return &Aggregator{
+		receiver: receiver,
 	}
 }
 
-func (u *UnixSocketAggregator) Run() {
-	events := make(chan model.LogEntry, bufferSize)
+func (u *Aggregator) Run() {
+	events := make(chan model.LogEntry, aggregatorBufferSize)
 	done := make(chan struct{})
 
 	go func() {
@@ -37,7 +33,11 @@ func (u *UnixSocketAggregator) Run() {
 	}()
 
 	go launchFileOutputCollector(events, done)
-	go launchUnixSocketReceiver(events)
+	go func() {
+		if err := u.receiver.Receive(events); err != nil {
+			panic(err)
+		}
+	}()
 
 	<-done
 }
@@ -46,13 +46,6 @@ func launchFileOutputCollector(events <-chan model.LogEntry, done chan struct{})
 	out := output.NewFileOutput(outputFilePath)
 	defer close(done)
 	if err := out.Write(events); err != nil {
-		panic(err)
-	}
-}
-
-func launchUnixSocketReceiver(events chan<- model.LogEntry) {
-	receiver := receiver.NewUnixSocketReceiver(socketPath, "local-socket")
-	if err := receiver.Receive(events); err != nil {
 		panic(err)
 	}
 }

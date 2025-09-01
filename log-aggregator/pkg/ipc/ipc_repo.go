@@ -1,22 +1,26 @@
 package ipc
 
-const bufferSize = 100
+import (
+	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/publisher"
+	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/receiver"
+)
+
 const socketPath = "/tmp/log.sock"
 const outputFilePath = "aggregated_logs.jsonl"
 
 type IPC struct {
-	producer   Producer
-	aggregator Aggregator
+	producer   *Producer
+	aggregator *Aggregator
 }
 
 var ipcTypes = map[string]IPC{
 	"unix_socket_stream": {
-		producer:   DefaultProducer{},
-		aggregator: NewUnixSocketAggregator(),
+		producer:   NewProducer(publisher.NewUnixSocketPublisher(socketPath)),
+		aggregator: NewAggregator(receiver.NewUnixSocketReceiver(socketPath, "local-socket")),
 	},
 }
 
-func GetAggregator(ipcType string) (Aggregator, bool) {
+func GetAggregator(ipcType string) (*Aggregator, bool) {
 	ipc, exists := getIPC(ipcType)
 	if !exists || ipc.aggregator == nil {
 		return nil, false
@@ -24,7 +28,7 @@ func GetAggregator(ipcType string) (Aggregator, bool) {
 	return ipc.aggregator, true
 }
 
-func GetProducer(ipcType string) (Producer, bool) {
+func GetProducer(ipcType string) (*Producer, bool) {
 	ipc, exists := getIPC(ipcType)
 	if !exists || ipc.producer == nil {
 		return nil, false

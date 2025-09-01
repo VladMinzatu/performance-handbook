@@ -9,10 +9,6 @@ import (
 	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/model"
 )
 
-type Output interface {
-	Write(events <-chan model.LogEntry) error
-}
-
 type FileOutput struct {
 	FilePath string
 }
