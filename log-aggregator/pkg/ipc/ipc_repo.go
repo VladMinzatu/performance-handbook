@@ -6,9 +6,9 @@ import (
 )
 
 const socketPath = "/tmp/log.sock"
-const outputFilePath = "aggregated_logs.jsonl"
-const fifoPath = "/tmp/log_fifo"
 const networkAddress = "127.0.0.1:9000"
+const fifoPath = "/tmp/log_fifo"
+const outputFilePath = "aggregated_logs.jsonl"
 
 type IPC struct {
 	producer   *Producer
