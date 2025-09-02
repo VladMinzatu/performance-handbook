@@ -2,7 +2,10 @@ package publisher
 
 import (
 	"encoding/json"
+	"io"
+	"log"
 	"net"
+	"os"
 
 	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/model"
 )
@@ -26,7 +29,7 @@ func (u *UnixSocketPublisher) Publish(events <-chan model.LogEntry) {
 	}
 	defer conn.Close()
 
-	writeToSocket(conn, events)
+	write(conn, events)
 }
 
 type UnixDatagramSocketPublisher struct {
@@ -48,10 +51,10 @@ func (u *UnixDatagramSocketPublisher) Publish(events <-chan model.LogEntry) {
 	}
 	defer conn.Close()
 
-	writeToSocket(conn, events)
+	write(conn, events)
 }
 
-func writeToSocket(conn net.Conn, events <-chan model.LogEntry) {
+func write(conn io.Writer, events <-chan model.LogEntry) {
 	for entry := range events {
 		b, err := json.Marshal(entry)
 		if err != nil {
@@ -62,4 +65,22 @@ func writeToSocket(conn net.Conn, events <-chan model.LogEntry) {
 			panic(err)
 		}
 	}
+}
+
+type FIFOPublisher struct {
+	fifoPath string
+}
+
+func NewFIFOPublisher(fifoPath string) *FIFOPublisher {
+	return &FIFOPublisher{fifoPath: fifoPath}
+}
+
+func (p *FIFOPublisher) Publish(events <-chan model.LogEntry) {
+	f, err := os.OpenFile(p.fifoPath, os.O_WRONLY, os.ModeNamedPipe)
+	if err != nil {
+		log.Fatal("open fifo for writing:", err)
+	}
+	defer f.Close()
+
+	write(f, events)
 }

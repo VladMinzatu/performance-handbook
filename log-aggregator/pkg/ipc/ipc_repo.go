@@ -7,6 +7,7 @@ import (
 
 const socketPath = "/tmp/log.sock"
 const outputFilePath = "aggregated_logs.jsonl"
+const fifoPath = "/tmp/log_fifo"
 
 type IPC struct {
 	producer   *Producer
@@ -14,13 +15,17 @@ type IPC struct {
 }
 
 var ipcTypes = map[string]IPC{
-	"unix_socket_stream": {
+	"unixsock": {
 		producer:   NewProducer(publisher.NewUnixSocketPublisher(socketPath)),
 		aggregator: NewAggregator(receiver.NewUnixSocketReceiver(socketPath)),
 	},
-	"unix_socket_datagram": {
+	"unixgram": {
 		producer:   NewProducer(publisher.NewUnixDatagramSocketPublisher(socketPath)),
 		aggregator: NewAggregator(receiver.NewUnixDatagramSocketReceiver(socketPath)),
+	},
+	"fifo": {
+		producer:   NewProducer(publisher.NewFIFOPublisher(fifoPath)),
+		aggregator: NewAggregator(receiver.NewFIFOReceiver(fifoPath)),
 	},
 }
 

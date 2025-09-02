@@ -3,7 +3,10 @@ package receiver
 import (
 	"bufio"
 	"encoding/json"
+	"log"
 	"net"
+	"os"
+	"syscall"
 
 	"github.com/VladMinzatu/performance-handbook/log-aggregator/pkg/model"
 )
@@ -81,4 +84,32 @@ func unmarshalAndWrite(payload string, events chan<- model.LogEntry) {
 	if err := json.Unmarshal([]byte(payload), &logEntry); err == nil {
 		events <- logEntry
 	}
+}
+
+type FIFOReceiver struct {
+	fifoPath string
+}
+
+func NewFIFOReceiver(fifoPath string) *FIFOReceiver {
+	return &FIFOReceiver{fifoPath: fifoPath}
+}
+
+func (r *FIFOReceiver) Receive(events chan<- model.LogEntry) error {
+	if err := syscall.Mkfifo(r.fifoPath, 0666); err != nil && !os.IsExist(err) {
+		log.Fatal("mkfifo error:", err)
+	}
+
+	f, err := os.OpenFile(r.fifoPath, os.O_RDONLY, os.ModeNamedPipe)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		payload := scanner.Text()
+		unmarshalAndWrite(payload, events)
+	}
+
+	return scanner.Err()
 }
