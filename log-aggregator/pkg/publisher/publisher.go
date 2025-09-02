@@ -75,12 +75,30 @@ func NewFIFOPublisher(fifoPath string) *FIFOPublisher {
 	return &FIFOPublisher{fifoPath: fifoPath}
 }
 
-func (p *FIFOPublisher) Publish(events <-chan model.LogEntry) {
-	f, err := os.OpenFile(p.fifoPath, os.O_WRONLY, os.ModeNamedPipe)
+func (f *FIFOPublisher) Publish(events <-chan model.LogEntry) {
+	file, err := os.OpenFile(f.fifoPath, os.O_WRONLY, os.ModeNamedPipe)
 	if err != nil {
 		log.Fatal("open fifo for writing:", err)
 	}
-	defer f.Close()
+	defer file.Close()
 
-	write(f, events)
+	write(file, events)
+}
+
+type TCPSocketPublisher struct {
+	address string
+}
+
+func NewTCPSocketPublisher(address string) *TCPSocketPublisher {
+	return &TCPSocketPublisher{address: address}
+}
+
+func (t *TCPSocketPublisher) Publish(events <-chan model.LogEntry) {
+	conn, err := net.Dial("tcp", t.address)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	write(conn, events)
 }

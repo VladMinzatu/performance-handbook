@@ -30,6 +30,11 @@ func (u *UnixSocketReceiver) Receive(events chan<- model.LogEntry) error {
 	}
 	defer ln.Close()
 
+	handleConnections(ln, events)
+	return nil
+}
+
+func handleConnections(ln net.Listener, events chan<- model.LogEntry) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -94,22 +99,41 @@ func NewFIFOReceiver(fifoPath string) *FIFOReceiver {
 	return &FIFOReceiver{fifoPath: fifoPath}
 }
 
-func (r *FIFOReceiver) Receive(events chan<- model.LogEntry) error {
-	if err := syscall.Mkfifo(r.fifoPath, 0666); err != nil && !os.IsExist(err) {
+func (f *FIFOReceiver) Receive(events chan<- model.LogEntry) error {
+	if err := syscall.Mkfifo(f.fifoPath, 0666); err != nil && !os.IsExist(err) {
 		log.Fatal("mkfifo error:", err)
 	}
 
-	f, err := os.OpenFile(r.fifoPath, os.O_RDONLY, os.ModeNamedPipe)
+	file, err := os.OpenFile(f.fifoPath, os.O_RDONLY, os.ModeNamedPipe)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer file.Close()
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		payload := scanner.Text()
 		unmarshalAndWrite(payload, events)
 	}
 
 	return scanner.Err()
+}
+
+type TCPSocketReceiver struct {
+	address string
+}
+
+func NewTCPSocketReceiver(address string) *TCPSocketReceiver {
+	return &TCPSocketReceiver{address: address}
+}
+
+func (t *TCPSocketReceiver) Receive(events chan<- model.LogEntry) error {
+	ln, err := net.Listen("tcp", t.address)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+
+	handleConnections(ln, events)
+	return nil
 }

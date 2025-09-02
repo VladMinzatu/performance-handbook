@@ -8,6 +8,7 @@ import (
 const socketPath = "/tmp/log.sock"
 const outputFilePath = "aggregated_logs.jsonl"
 const fifoPath = "/tmp/log_fifo"
+const networkAddress = "127.0.0.1:9000"
 
 type IPC struct {
 	producer   *Producer
@@ -26,6 +27,10 @@ var ipcTypes = map[string]IPC{
 	"fifo": {
 		producer:   NewProducer(publisher.NewFIFOPublisher(fifoPath)),
 		aggregator: NewAggregator(receiver.NewFIFOReceiver(fifoPath)),
+	},
+	"tcp": {
+		producer:   NewProducer(publisher.NewTCPSocketPublisher(networkAddress)),
+		aggregator: NewAggregator(receiver.NewTCPSocketReceiver(networkAddress)),
 	},
 }
 
