@@ -20,21 +20,21 @@ var ipcTypes = map[string]IPC{
 		producer:   NewProducer(publisher.NewUnixSocketPublisher(socketPath)),
 		aggregator: NewAggregator(receiver.NewUnixSocketReceiver(socketPath)),
 	},
-	"unixgram": {
-		producer:   NewProducer(publisher.NewUnixDatagramSocketPublisher(socketPath)),
-		aggregator: NewAggregator(receiver.NewUnixDatagramSocketReceiver(socketPath)),
-	},
-	"fifo": {
-		producer:   NewProducer(publisher.NewFIFOPublisher(fifoPath)),
-		aggregator: NewAggregator(receiver.NewFIFOReceiver(fifoPath)),
-	},
 	"tcp": {
 		producer:   NewProducer(publisher.NewTCPSocketPublisher(networkAddress)),
 		aggregator: NewAggregator(receiver.NewTCPSocketReceiver(networkAddress)),
 	},
+	"unixgram": {
+		producer:   NewProducer(publisher.NewUnixDatagramSocketPublisher(socketPath)),
+		aggregator: NewAggregator(receiver.NewUnixDatagramSocketReceiver(socketPath)),
+	},
 	"udp": {
 		producer:   NewProducer(publisher.NewUDPSocketPublisher(networkAddress)),
 		aggregator: NewAggregator(receiver.NewUDPSocketReceiver(networkAddress)),
+	},
+	"fifo": {
+		producer:   NewProducer(publisher.NewFIFOPublisher(fifoPath)),
+		aggregator: NewAggregator(receiver.NewFIFOReceiver(fifoPath)),
 	},
 }
 
