@@ -137,3 +137,28 @@ func (t *TCPSocketReceiver) Receive(events chan<- model.LogEntry) error {
 	handleConnections(ln, events)
 	return nil
 }
+
+type UDPSocketReceiver struct {
+	address string
+}
+
+func NewUDPSocketReceiver(address string) *UDPSocketReceiver {
+	return &UDPSocketReceiver{address: address}
+}
+
+func (u *UDPSocketReceiver) Receive(events chan<- model.LogEntry) error {
+	conn, err := net.ListenPacket("udp", u.address)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	buf := make([]byte, 8192)
+	for {
+		n, _, err := conn.ReadFrom(buf)
+		if err != nil {
+			return err
+		}
+		payload := string(buf[:n])
+		unmarshalAndWrite(payload, events)
+	}
+}

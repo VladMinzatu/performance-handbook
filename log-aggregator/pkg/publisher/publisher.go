@@ -102,3 +102,21 @@ func (t *TCPSocketPublisher) Publish(events <-chan model.LogEntry) {
 
 	write(conn, events)
 }
+
+type UDPSocketPublisher struct {
+	address string
+}
+
+func NewUDPSocketPublisher(address string) *UDPSocketPublisher {
+	return &UDPSocketPublisher{address: address}
+}
+
+func (u *UDPSocketPublisher) Publish(events <-chan model.LogEntry) {
+	conn, err := net.Dial("udp", u.address)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	write(conn, events)
+}

@@ -32,6 +32,10 @@ var ipcTypes = map[string]IPC{
 		producer:   NewProducer(publisher.NewTCPSocketPublisher(networkAddress)),
 		aggregator: NewAggregator(receiver.NewTCPSocketReceiver(networkAddress)),
 	},
+	"udp": {
+		producer:   NewProducer(publisher.NewUDPSocketPublisher(networkAddress)),
+		aggregator: NewAggregator(receiver.NewUDPSocketReceiver(networkAddress)),
+	},
 }
 
 func GetAggregator(ipcType string) (*Aggregator, bool) {
