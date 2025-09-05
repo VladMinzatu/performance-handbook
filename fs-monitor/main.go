@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"os"
+
+	"github.com/VladMinzatu/performance-handbook/fs-monitor/tracking"
 )
 
 func main() {
@@ -11,7 +13,7 @@ func main() {
 	}
 	dir := os.Args[1]
 
-	tracker, err := NewTracker(dir)
+	tracker, err := tracking.NewTracker(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
