@@ -1,7 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"log"
+	"os"
+)
 
 func main() {
-	fmt.Println("fs-monitor")
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: tracker <dir>")
+	}
+	dir := os.Args[1]
+
+	tracker, err := NewTracker(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tracker.Run()
 }

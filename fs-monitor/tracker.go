@@ -59,5 +59,5 @@ func (t *Tracker) Run() {
 }
 
 func (t *Tracker) handleEvent(event fsnotify.Event) {
-	// TODO
+	slog.Info("Event detected", "event", event)
 }
