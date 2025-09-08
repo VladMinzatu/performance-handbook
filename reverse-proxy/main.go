@@ -4,11 +4,18 @@ import (
 	"io"
 	"log"
 	"net"
+
+	"github.com/VladMinzatu/performance-handbook/reverse-proxy/connector"
 )
 
 func main() {
 	listenAddr := ":8080"
 	backendAddr := "127.0.0.1:9000"
+
+	connector, err := connector.NewPoolConnector(backendAddr, 10)
+	if err != nil {
+		log.Fatalf("failed to create connector: %v", err)
+	}
 
 	ln, err := net.Listen("tcp", listenAddr)
 	if err != nil {
@@ -22,20 +29,20 @@ func main() {
 			log.Printf("accept error: %v", err)
 			continue
 		}
-		go handleConn(clientConn, backendAddr)
+		go handleConn(clientConn, connector)
 	}
 }
 
-func handleConn(clientConn net.Conn, backendAddr string) {
+func handleConn(clientConn net.Conn, backend connector.BackendConnector) {
 	defer clientConn.Close()
 
-	backendConn, err := net.Dial("tcp", backendAddr)
+	backendConn, err := backend.Get()
 	if err != nil {
-		log.Printf("backend dial failed: %v", err)
+		log.Printf("backend connect failed: %v", err)
 		return
 	}
-	defer backendConn.Close()
+	defer backend.Return(backendConn)
 
-	go io.Copy(backendConn, clientConn) // client → backend
-	io.Copy(clientConn, backendConn)    // backend → client
+	go io.Copy(backendConn, clientConn)
+	io.Copy(clientConn, backendConn)
 }
