@@ -1,9 +1,12 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
+	"os"
 
 	"github.com/VladMinzatu/performance-handbook/reverse-proxy/connector"
 )
@@ -12,7 +15,7 @@ func main() {
 	listenAddr := ":8080"
 	backendAddr := "127.0.0.1:9000"
 
-	connector, err := connector.NewPoolConnector(backendAddr, 10)
+	backend, err := resolveConnector(backendAddr)
 	if err != nil {
 		log.Fatalf("failed to create connector: %v", err)
 	}
@@ -29,7 +32,7 @@ func main() {
 			log.Printf("accept error: %v", err)
 			continue
 		}
-		go handleConn(clientConn, connector)
+		go handleConn(clientConn, backend)
 	}
 }
 
@@ -45,4 +48,26 @@ func handleConn(clientConn net.Conn, backend connector.BackendConnector) {
 
 	go io.Copy(backendConn, clientConn)
 	io.Copy(clientConn, backendConn)
+}
+
+func resolveConnector(backendAddr string) (connector.BackendConnector, error) {
+	connectorType := flag.String("connector", "", "backend connector type (pool or dial) [required]")
+	flag.Parse()
+
+	if *connectorType == "" {
+		fmt.Fprintln(os.Stderr, "Error: -connector flag is required (pool or dial)")
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	switch *connectorType {
+	case "pool":
+		return connector.NewPoolConnector(backendAddr, 10)
+	case "dial":
+		return connector.NewAlwaysDialConnector(backendAddr), nil
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown connector type: %s\n", *connectorType)
+		os.Exit(2)
+	}
+	return nil, fmt.Errorf("unreachable")
 }
