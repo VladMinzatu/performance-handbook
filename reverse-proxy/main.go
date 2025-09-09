@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
 
 	"github.com/VladMinzatu/performance-handbook/reverse-proxy/connector"
+	"github.com/VladMinzatu/performance-handbook/reverse-proxy/engine"
 )
 
 func main() {
@@ -19,6 +19,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create connector: %v", err)
 	}
+
+	engine := resolveEngine()
 
 	ln, err := net.Listen("tcp", listenAddr)
 	if err != nil {
@@ -32,22 +34,8 @@ func main() {
 			log.Printf("accept error: %v", err)
 			continue
 		}
-		go handleConn(clientConn, backend)
+		engine.Serve(clientConn, backend)
 	}
-}
-
-func handleConn(clientConn net.Conn, backend connector.BackendConnector) {
-	defer clientConn.Close()
-
-	backendConn, err := backend.Get()
-	if err != nil {
-		log.Printf("backend connect failed: %v", err)
-		return
-	}
-	defer backend.Return(backendConn)
-
-	go io.Copy(backendConn, clientConn)
-	io.Copy(clientConn, backendConn)
 }
 
 func resolveConnector(backendAddr string) (connector.BackendConnector, error) {
@@ -70,4 +58,18 @@ func resolveConnector(backendAddr string) (connector.BackendConnector, error) {
 		os.Exit(2)
 	}
 	return nil, fmt.Errorf("unreachable")
+}
+
+func resolveEngine() engine.Engine {
+	engineType := flag.String("engine", "goroutine", "engine type (goroutine) [default: goroutine]")
+	flag.Parse()
+
+	switch *engineType {
+	case "goroutine":
+		return &engine.GoroutineEngine{}
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown engine type: %s\n", *engineType)
+		os.Exit(2)
+	}
+	return nil
 }
