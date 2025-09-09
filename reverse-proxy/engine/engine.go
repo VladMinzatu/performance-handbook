@@ -13,12 +13,17 @@ import (
 )
 
 type Engine interface {
-	Serve(clientConn net.Conn, backend connector.BackendConnector)
+	Start()
+	Serve(clientConn net.Conn, backend connector.BackendConnector) error
 }
 
 type GoroutineEngine struct{}
 
-func (ge *GoroutineEngine) Serve(clientConn net.Conn, backend connector.BackendConnector) {
+func (ge *GoroutineEngine) Start() {
+	// No initialization needed for goroutine engine
+}
+
+func (ge *GoroutineEngine) Serve(clientConn net.Conn, backend connector.BackendConnector) error {
 	go func() {
 		defer clientConn.Close()
 
@@ -32,6 +37,7 @@ func (ge *GoroutineEngine) Serve(clientConn net.Conn, backend connector.BackendC
 		go io.Copy(backendConn, clientConn)
 		io.Copy(clientConn, backendConn)
 	}()
+	return nil
 }
 
 type EpollEngine struct {
@@ -56,6 +62,10 @@ func NewEpollEngine() (*EpollEngine, error) {
 		epfd:  epfd,
 		conns: make(map[int]*ProxyConn),
 	}, nil
+}
+
+func (e *EpollEngine) Start() {
+	go e.Loop()
 }
 
 func (e *EpollEngine) Serve(client net.Conn, backend connector.BackendConnector) error {

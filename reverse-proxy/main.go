@@ -20,7 +20,11 @@ func main() {
 		log.Fatalf("failed to create connector: %v", err)
 	}
 
-	engine := resolveEngine()
+	engine, err := resolveEngine()
+	if err != nil {
+		log.Fatalf("failed to create engine: %v", err)
+	}
+	engine.Start()
 
 	ln, err := net.Listen("tcp", listenAddr)
 	if err != nil {
@@ -60,16 +64,18 @@ func resolveConnector(backendAddr string) (connector.BackendConnector, error) {
 	return nil, fmt.Errorf("unreachable")
 }
 
-func resolveEngine() engine.Engine {
-	engineType := flag.String("engine", "goroutine", "engine type (goroutine) [default: goroutine]")
+func resolveEngine() (engine.Engine, error) {
+	engineType := flag.String("engine", "goroutine", "engine type (goroutine or epoll) [default: goroutine]")
 	flag.Parse()
 
 	switch *engineType {
 	case "goroutine":
-		return &engine.GoroutineEngine{}
+		return &engine.GoroutineEngine{}, nil
+	case "epoll":
+		return engine.NewEpollEngine()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown engine type: %s\n", *engineType)
 		os.Exit(2)
 	}
-	return nil
+	return nil, fmt.Errorf("unreachable")
 }
