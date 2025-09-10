@@ -3,7 +3,7 @@ package connector
 import (
 	"net"
 
-	"github.com/VladMinzatu/performance-handbook/reverse-proxy/pool"
+	"github.com/VladMinzatu/performance-handbook/reverse-proxy/pkg/pool"
 )
 
 type BackendConnector interface {

@@ -7,8 +7,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/VladMinzatu/performance-handbook/reverse-proxy/connector"
-	"github.com/VladMinzatu/performance-handbook/reverse-proxy/engine"
+	"github.com/VladMinzatu/performance-handbook/reverse-proxy/pkg/connector"
+	"github.com/VladMinzatu/performance-handbook/reverse-proxy/pkg/engine"
 )
 
 func main() {

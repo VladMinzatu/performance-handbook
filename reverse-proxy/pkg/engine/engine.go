@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/VladMinzatu/performance-handbook/reverse-proxy/connector"
+	"github.com/VladMinzatu/performance-handbook/reverse-proxy/pkg/connector"
 )
 
 type Engine interface {
