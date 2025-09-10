@@ -19,12 +19,6 @@ func main() {
 	engineType := flag.String("engine", "goroutine", "engine type (goroutine or epoll) [default: goroutine]")
 	flag.Parse()
 
-	if *connectorType == "" {
-		fmt.Fprintln(os.Stderr, "Error: -connector flag is required (pool or dial)")
-		flag.Usage()
-		os.Exit(2)
-	}
-
 	backend, err := resolveConnector(backendAddr, *connectorType)
 	if err != nil {
 		log.Fatalf("failed to create connector: %v", err)
@@ -40,7 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("listen failed: %v", err)
 	}
-	log.Printf("Proxy listening on %s, forwarding to %s", listenAddr, backendAddr)
+	log.Printf("Proxy listening on %s, forwarding to %s [connectorType=%s ; engineType=%s]", listenAddr, backendAddr, connectorType, engineType)
 
 	for {
 		clientConn, err := ln.Accept()
