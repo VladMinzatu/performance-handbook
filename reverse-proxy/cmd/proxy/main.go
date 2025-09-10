@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("listen failed: %v", err)
 	}
-	log.Printf("Proxy listening on %s, forwarding to %s [connectorType=%s ; engineType=%s]", listenAddr, backendAddr, connectorType, engineType)
+	log.Printf("Proxy listening on %s, forwarding to %s [connectorType=%s ; engineType=%s]", listenAddr, backendAddr, *connectorType, *engineType)
 
 	for {
 		clientConn, err := ln.Accept()
