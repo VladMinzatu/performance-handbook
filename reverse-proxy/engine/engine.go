@@ -74,7 +74,7 @@ func (e *EpollEngine) Serve(client net.Conn, backend connector.BackendConnector)
 		log.Printf("backend connect failed: %v", err)
 		return err
 	}
-	defer backend.Return(backendConn)
+	// no defer backend.Return(backendConn) here, will be handled in closeConn
 
 	clientFd, err := fdFromConn(client)
 	if err != nil {
