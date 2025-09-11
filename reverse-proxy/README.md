@@ -10,4 +10,4 @@ The second configuration flag is `engine` and it also has 2 possible values:
 - **goroutine**: will spin up a goroutine for the handling of each incoming client connection until it is closed.
 - **epoll**: will roll out its own low level event loop using Linux `epoll`, bypassing the Go netpoller. This should avoid the memory and scheduling overhead of the goroutine-per-connection model.
 
-All 4 possible combinations of these flag values are possible for testing.
+All 4 possible combinations of these flag values are allowed and available for testing.
