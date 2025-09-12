@@ -15,7 +15,9 @@ I implemented the log aggregation (the communication between the log producers a
 
 First, the aggregator needs to be launched, listening on one of the supported IPC types, e.g.:
 ```
-go run cmd/aggregator/main.go unixsock
+cd cmd/aggregator
+go build .
+./aggregator unixsock
 ```
 
 Multiple producers can be launched to send logs, using the same IPC type for the functionality to work end to end:

@@ -6,7 +6,7 @@ MSG_SIZE=100
 
 for i in $(seq 1 $N); do
     echo "Starting producer $i..."
-    go run cmd/producer/main.go "$IPC_TYPE" "$MSG_SIZE" &
+    ./cmd/producer/producer "$IPC_TYPE" "$MSG_SIZE" &
 done
 
 wait
