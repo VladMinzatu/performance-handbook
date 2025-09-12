@@ -9,6 +9,7 @@ const socketPath = "/tmp/log.sock"
 const networkAddress = "127.0.0.1:9000"
 const fifoPath = "/tmp/log_fifo"
 const outputFilePath = "aggregated_logs.jsonl"
+const defaultMessageSize = 100
 
 type IPC struct {
 	producer   *Producer
@@ -17,23 +18,23 @@ type IPC struct {
 
 var ipcTypes = map[string]IPC{
 	"unixsock": {
-		producer:   NewProducer(publisher.NewUnixSocketPublisher(socketPath)),
+		producer:   NewProducer(publisher.NewUnixSocketPublisher(socketPath), defaultMessageSize),
 		aggregator: NewAggregator(receiver.NewUnixSocketReceiver(socketPath)),
 	},
 	"tcp": {
-		producer:   NewProducer(publisher.NewTCPSocketPublisher(networkAddress)),
+		producer:   NewProducer(publisher.NewTCPSocketPublisher(networkAddress), defaultMessageSize),
 		aggregator: NewAggregator(receiver.NewTCPSocketReceiver(networkAddress)),
 	},
 	"unixgram": {
-		producer:   NewProducer(publisher.NewUnixDatagramSocketPublisher(socketPath)),
+		producer:   NewProducer(publisher.NewUnixDatagramSocketPublisher(socketPath), defaultMessageSize),
 		aggregator: NewAggregator(receiver.NewUnixDatagramSocketReceiver(socketPath)),
 	},
 	"udp": {
-		producer:   NewProducer(publisher.NewUDPSocketPublisher(networkAddress)),
+		producer:   NewProducer(publisher.NewUDPSocketPublisher(networkAddress), defaultMessageSize),
 		aggregator: NewAggregator(receiver.NewUDPSocketReceiver(networkAddress)),
 	},
 	"fifo": {
-		producer:   NewProducer(publisher.NewFIFOPublisher(fifoPath)),
+		producer:   NewProducer(publisher.NewFIFOPublisher(fifoPath), defaultMessageSize),
 		aggregator: NewAggregator(receiver.NewFIFOReceiver(fifoPath)),
 	},
 }
@@ -46,11 +47,12 @@ func GetAggregator(ipcType string) (*Aggregator, bool) {
 	return ipc.aggregator, true
 }
 
-func GetProducer(ipcType string) (*Producer, bool) {
+func GetProducer(ipcType string, messageSize int) (*Producer, bool) {
 	ipc, exists := getIPC(ipcType)
 	if !exists || ipc.producer == nil {
 		return nil, false
 	}
+	ipc.producer.messageSize = messageSize
 	return ipc.producer, true
 }
 

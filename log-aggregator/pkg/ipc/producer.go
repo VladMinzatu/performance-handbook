@@ -1,7 +1,6 @@
 package ipc
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -14,11 +13,12 @@ const duration = 5 * time.Second
 const frequency = 10 // events per second
 
 type Producer struct {
-	publisher publisher.Publisher
+	publisher   publisher.Publisher
+	messageSize int
 }
 
-func NewProducer(publisher publisher.Publisher) *Producer {
-	return &Producer{publisher: publisher}
+func NewProducer(publisher publisher.Publisher, messageSize int) *Producer {
+	return &Producer{publisher: publisher, messageSize: messageSize}
 }
 
 func (p Producer) Run() {
@@ -38,6 +38,8 @@ func (p Producer) Run() {
 		p.publisher.Publish(events)
 	}()
 
+	msg := MessageOfSize(p.messageSize)
+
 	ticker := time.NewTicker(time.Second / time.Duration(frequency))
 	defer ticker.Stop()
 	timeout := time.After(duration)
@@ -52,9 +54,17 @@ func (p Producer) Run() {
 				Source:    "producer",
 				Timestamp: t.Unix(),
 				Level:     "INFO",
-				Message:   fmt.Sprintf("producer log at %v", t),
+				Message:   msg,
 			}
 			events <- entry
 		}
 	}
+}
+
+func MessageOfSize(size int) string {
+	buf := make([]byte, size)
+	for i := 0; i < size; i++ {
+		buf[i] = 'A' + byte(i%26)
+	}
+	return string(buf)
 }
