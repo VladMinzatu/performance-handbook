@@ -10,3 +10,17 @@ I implemented the log aggregation (the communication between the log producers a
 - **Unix Domain Datagram**: connectionless, unreliable and message-oriented. Duplication, loss and reordering are possible, but if reliability is not a huge concern, they might be more performant than Unix Domain Sockets. Will be interesting to check exactly how. 
 - **UDP**: also connectionless, unreliable and message-oriented, but over the network stack, so we'll have some overhead from that again, but should be faster than TCP on loopback, but with some of the same downsides as for Unix Domain Datagram.
 - **FIFO Pipe**: this is also a stream-oriented approach with blocking/non-blocking semantics similar to file I/O. It is more typically used in one-writer-one-reader scenarios and its particular semantics make it a bad fit for our application (without some special handling at least). For example, when all writers stop writing and close the pipe, this acts as an EOF to the reader. But it might be interesting to check its performance and understand how it works under the hood compared to the other techniques. Moving the data from one process to another should just involve kernel buffer copying, so it should be very performant.
+
+## Running local tests
+
+First, the aggregator needs to be launched, listening on one of the supported IPC types, e.g.:
+```
+go run cmd/aggregator/main.go unixsock
+```
+
+Multiple producers can be launched to send logs, using the same IPC type for the functionality to work end to end:
+```
+bash launch-producers.sh
+```
+
+The aggregator will write all received logs to a local file called `aggregated_logs.jsonl`.
