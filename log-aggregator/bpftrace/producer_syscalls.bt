@@ -1,0 +1,12 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Count syscalls made by the log producer to see which IPC backend it hits.
+ */
+
+tracepoint:syscalls:sys_enter_*
+/comm == "producer"/
+{
+    @[probe] = count();
+}
+

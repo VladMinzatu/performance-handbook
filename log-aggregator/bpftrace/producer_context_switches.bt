@@ -1,0 +1,12 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Count context switches involving the producer processes.
+ */
+
+tracepoint:sched:sched_switch
+/comm == "producer"/
+{
+    @[comm] = count();
+}
+
