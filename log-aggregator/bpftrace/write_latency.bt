@@ -1,0 +1,20 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Measure latency of write() syscalls for a given process (sender).
+ * Outputs histogram of syscall duration (ns).
+ */
+
+tracepoint:syscalls:sys_enter_write
+/comm == "producer"/
+{
+    @ts[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_write
+/@ts[tid]/
+{
+    @lat = hist(nsecs - @ts[tid]);
+    delete(@ts[tid]);
+}
+

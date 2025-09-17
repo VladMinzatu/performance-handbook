@@ -1,0 +1,19 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Aggregate number of bytes written per second by sender process.
+ */
+
+tracepoint:syscalls:sys_exit_write
+/comm == "producer"/
+{
+    @bytes = sum(args->ret);
+}
+
+interval:s:1
+{
+    time("%H:%M:%S  ");
+    print(@bytes);
+    clear(@bytes);
+}
+
