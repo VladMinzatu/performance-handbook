@@ -1,0 +1,11 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Count reasons for skb free (drops).
+ */
+
+tracepoint:skb:kfree_skb
+{
+    @[args->reason] = count();
+}
+
