@@ -1,0 +1,18 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Trace TCP socket buffer allocations to see kernel cost of send.
+ */
+
+kprobe:tcp_sendmsg
+{
+    @ts[tid] = nsecs;
+}
+
+kretprobe:tcp_sendmsg
+/@ts[tid]/
+{
+    @lat = hist(nsecs - @ts[tid]);
+    delete(@ts[tid]);
+}
+
