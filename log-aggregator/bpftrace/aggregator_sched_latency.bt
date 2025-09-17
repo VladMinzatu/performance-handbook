@@ -1,0 +1,20 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Histogram of how long the aggregator waits between wakeup and running.
+ * Updated for recent bpftrace (tracepoint args are flattened).
+ */
+
+tracepoint:sched:sched_wakeup
+/comm == "aggregator"/
+{
+    @ts[args->pid] = nsecs;
+}
+
+tracepoint:sched:sched_switch
+/@ts[args->prev_pid]/
+{
+    @lat = hist(nsecs - @ts[args->prev_pid]);
+    delete(@ts[args->prev_pid]);
+}
+
