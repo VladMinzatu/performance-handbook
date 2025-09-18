@@ -212,4 +212,39 @@ udp:
 
 fifo:
 ```
+@[tracepoint:syscalls:sys_enter_set_tid_address]: 5
+@[tracepoint:syscalls:sys_enter_exit_group]: 5
+@[tracepoint:syscalls:sys_enter_eventfd2]: 5
+@[tracepoint:syscalls:sys_enter_faccessat]: 5
+@[tracepoint:syscalls:sys_enter_epoll_create1]: 5
+@[tracepoint:syscalls:sys_enter_getrandom]: 5
+@[tracepoint:syscalls:sys_enter_sched_yield]: 7
+@[tracepoint:syscalls:sys_enter_sched_getaffinity]: 10
+@[tracepoint:syscalls:sys_enter_madvise]: 10
+@[tracepoint:syscalls:sys_enter_epoll_ctl]: 15
+@[tracepoint:syscalls:sys_enter_newfstat]: 15
+@[tracepoint:syscalls:sys_enter_brk]: 15
+@[tracepoint:syscalls:sys_enter_prlimit64]: 20
+@[tracepoint:syscalls:sys_enter_tgkill]: 22
+@[tracepoint:syscalls:sys_enter_rt_sigreturn]: 22
+@[tracepoint:syscalls:sys_enter_getpid]: 23
+@[tracepoint:syscalls:sys_enter_clone3]: 25
+@[tracepoint:syscalls:sys_enter_set_robust_list]: 30
+@[tracepoint:syscalls:sys_enter_rseq]: 30
+@[tracepoint:syscalls:sys_enter_gettid]: 30
+@[tracepoint:syscalls:sys_enter_close]: 35
+@[tracepoint:syscalls:sys_enter_munmap]: 35
+@[tracepoint:syscalls:sys_enter_read]: 40
+@[tracepoint:syscalls:sys_enter_openat]: 40
+@[tracepoint:syscalls:sys_enter_fcntl]: 40
+@[tracepoint:syscalls:sys_enter_sigaltstack]: 60
+@[tracepoint:syscalls:sys_enter_mprotect]: 65
+@[tracepoint:syscalls:sys_enter_rt_sigprocmask]: 165
+@[tracepoint:syscalls:sys_enter_mmap]: 195
+@[tracepoint:syscalls:sys_enter_write]: 250
+@[tracepoint:syscalls:sys_enter_epoll_pwait]: 296
+@[tracepoint:syscalls:sys_enter_nanosleep]: 548
+@[tracepoint:syscalls:sys_enter_rt_sigaction]: 565
+@[tracepoint:syscalls:sys_enter_futex]: 960
 ```
+
