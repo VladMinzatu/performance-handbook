@@ -1,0 +1,57 @@
+#!/usr/bin/env bpftrace
+
+/*
+ * Measure latency histograms of selected syscalls for producer processes.
+ * Syscalls: write, epoll_pwait, futex.
+ */
+
+BEGIN
+{
+    printf("Tracing syscalls for process 'producer'... Hit Ctrl-C to end.\n");
+}
+
+/* --- write() --- */
+tracepoint:syscalls:sys_enter_write
+/comm == "producer"/
+{
+    @ts[tid,"write"] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_write
+/@ts[tid,"write"]/
+{
+    $delta = nsecs - @ts[tid,"write"];
+    @lat["write"] = hist($delta);
+    delete(@ts[tid,"write"]);
+}
+
+/* --- epoll_pwait() --- */
+tracepoint:syscalls:sys_enter_epoll_pwait
+/comm == "producer"/
+{
+    @ts[tid,"epoll_pwait"] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_epoll_pwait
+/@ts[tid,"epoll_pwait"]/
+{
+    $delta = nsecs - @ts[tid,"epoll_pwait"];
+    @lat["epoll_pwait"] = hist($delta);
+    delete(@ts[tid,"epoll_pwait"]);
+}
+
+/* --- futex() --- */
+tracepoint:syscalls:sys_enter_futex
+/comm == "producer"/
+{
+    @ts[tid,"futex"] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_futex
+/@ts[tid,"futex"]/
+{
+    $delta = nsecs - @ts[tid,"futex"];
+    @lat["futex"] = hist($delta);
+    delete(@ts[tid,"futex"]);
+}
+
