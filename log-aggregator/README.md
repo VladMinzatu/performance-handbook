@@ -83,6 +83,46 @@ unixsock:
 
 tcp:
 ```
+@[tracepoint:syscalls:sys_enter_getsockopt]: 5
+@[tracepoint:syscalls:sys_enter_epoll_create1]: 5
+@[tracepoint:syscalls:sys_enter_faccessat]: 5
+@[tracepoint:syscalls:sys_enter_connect]: 5
+@[tracepoint:syscalls:sys_enter_set_tid_address]: 5
+@[tracepoint:syscalls:sys_enter_socket]: 5
+@[tracepoint:syscalls:sys_enter_getpeername]: 5
+@[tracepoint:syscalls:sys_enter_getsockname]: 5
+@[tracepoint:syscalls:sys_enter_eventfd2]: 5
+@[tracepoint:syscalls:sys_enter_exit_group]: 5
+@[tracepoint:syscalls:sys_enter_getrandom]: 5
+@[tracepoint:syscalls:sys_enter_sched_getaffinity]: 10
+@[tracepoint:syscalls:sys_enter_madvise]: 10
+@[tracepoint:syscalls:sys_enter_epoll_ctl]: 15
+@[tracepoint:syscalls:sys_enter_brk]: 15
+@[tracepoint:syscalls:sys_enter_newfstat]: 15
+@[tracepoint:syscalls:sys_enter_sched_yield]: 16
+@[tracepoint:syscalls:sys_enter_prlimit64]: 20
+@[tracepoint:syscalls:sys_enter_clone3]: 24
+@[tracepoint:syscalls:sys_enter_rt_sigreturn]: 25
+@[tracepoint:syscalls:sys_enter_setsockopt]: 25
+@[tracepoint:syscalls:sys_enter_getpid]: 26
+@[tracepoint:syscalls:sys_enter_tgkill]: 26
+@[tracepoint:syscalls:sys_enter_rseq]: 29
+@[tracepoint:syscalls:sys_enter_set_robust_list]: 29
+@[tracepoint:syscalls:sys_enter_gettid]: 29
+@[tracepoint:syscalls:sys_enter_fcntl]: 30
+@[tracepoint:syscalls:sys_enter_close]: 35
+@[tracepoint:syscalls:sys_enter_openat]: 35
+@[tracepoint:syscalls:sys_enter_munmap]: 36
+@[tracepoint:syscalls:sys_enter_read]: 40
+@[tracepoint:syscalls:sys_enter_sigaltstack]: 58
+@[tracepoint:syscalls:sys_enter_mprotect]: 63
+@[tracepoint:syscalls:sys_enter_rt_sigprocmask]: 159
+@[tracepoint:syscalls:sys_enter_mmap]: 191
+@[tracepoint:syscalls:sys_enter_write]: 250
+@[tracepoint:syscalls:sys_enter_epoll_pwait]: 339
+@[tracepoint:syscalls:sys_enter_rt_sigaction]: 565
+@[tracepoint:syscalls:sys_enter_nanosleep]: 803
+@[tracepoint:syscalls:sys_enter_futex]: 955
 ```
 
 fifo:
