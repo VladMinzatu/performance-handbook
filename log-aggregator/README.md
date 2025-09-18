@@ -26,3 +26,73 @@ bash launch-producers.sh
 ```
 
 The aggregator will write all received logs to a local file called `aggregated_logs.jsonl`.
+
+## bpftrace
+
+We'll conduct our behavior and performance analysis tests focusing on bpftrace (I am using `bpftrace v0.23.5` and the scripts are checked into the `.bpftrace/` directory).
+
+First, while running our local tests, we'll run a simple syscall counter, like so:
+```
+cd bpftrace
+sudo ./producer_syscalls.bt
+```
+
+which produces the following output for the various IPC types:
+
+unixsock:
+```
+@[tracepoint:syscalls:sys_enter_faccessat]: 5
+@[tracepoint:syscalls:sys_enter_connect]: 5
+@[tracepoint:syscalls:sys_enter_getsockname]: 5
+@[tracepoint:syscalls:sys_enter_exit_group]: 5
+@[tracepoint:syscalls:sys_enter_eventfd2]: 5
+@[tracepoint:syscalls:sys_enter_getrandom]: 5
+@[tracepoint:syscalls:sys_enter_epoll_create1]: 5
+@[tracepoint:syscalls:sys_enter_set_tid_address]: 5
+@[tracepoint:syscalls:sys_enter_getpeername]: 5
+@[tracepoint:syscalls:sys_enter_socket]: 5
+@[tracepoint:syscalls:sys_enter_sched_yield]: 9
+@[tracepoint:syscalls:sys_enter_sched_getaffinity]: 10
+@[tracepoint:syscalls:sys_enter_madvise]: 10
+@[tracepoint:syscalls:sys_enter_brk]: 15
+@[tracepoint:syscalls:sys_enter_newfstat]: 15
+@[tracepoint:syscalls:sys_enter_epoll_ctl]: 15
+@[tracepoint:syscalls:sys_enter_prlimit64]: 20
+@[tracepoint:syscalls:sys_enter_rt_sigreturn]: 22
+@[tracepoint:syscalls:sys_enter_getpid]: 23
+@[tracepoint:syscalls:sys_enter_tgkill]: 23
+@[tracepoint:syscalls:sys_enter_clone3]: 26
+@[tracepoint:syscalls:sys_enter_fcntl]: 30
+@[tracepoint:syscalls:sys_enter_gettid]: 31
+@[tracepoint:syscalls:sys_enter_rseq]: 31
+@[tracepoint:syscalls:sys_enter_set_robust_list]: 31
+@[tracepoint:syscalls:sys_enter_munmap]: 35
+@[tracepoint:syscalls:sys_enter_close]: 35
+@[tracepoint:syscalls:sys_enter_openat]: 35
+@[tracepoint:syscalls:sys_enter_read]: 40
+@[tracepoint:syscalls:sys_enter_sigaltstack]: 62
+@[tracepoint:syscalls:sys_enter_mprotect]: 67
+@[tracepoint:syscalls:sys_enter_rt_sigprocmask]: 171
+@[tracepoint:syscalls:sys_enter_mmap]: 197
+@[tracepoint:syscalls:sys_enter_write]: 250
+@[tracepoint:syscalls:sys_enter_rt_sigaction]: 565
+@[tracepoint:syscalls:sys_enter_epoll_pwait]: 590
+@[tracepoint:syscalls:sys_enter_nanosleep]: 724
+@[tracepoint:syscalls:sys_enter_futex]: 910
+```
+
+tcp:
+```
+```
+
+fifo:
+```
+```
+
+unixgram:
+```
+```
+
+udp:
+```
+```
