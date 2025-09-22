@@ -1,7 +1,7 @@
 #!/bin/bash
 
 N=5  # number of producers
-IPC_TYPE=fifo
+IPC_TYPE=udp
 MSG_SIZE=100
 
 for i in $(seq 1 $N); do

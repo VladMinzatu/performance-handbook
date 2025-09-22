@@ -564,5 +564,11 @@ fifo:
 Let's try to interpret what we are seeing here:
 - first, the similar distributions of `futex` and `epoll_pwait` for each IPC type clearly show how our pattern of log generation during the test interact with the system through the Go runtime: we generate the messages at 100ms intervals with no jitter. `futex` is used under the hood for the Ticker: ticker fires -> goroutine wakes up via `futex`. And the writes are handled through the netpoller, with system calls blocking the goroutine (but not the underlying thread) for the 100ms between messages.
 - the performance of the `write`s themselves is not very different across IPC types - we can argue that the overhead in the tcp case is noticeable as it skews the distribution a bit. Fifo seems to be the fastest perhaps, not surprisingly given that it's the simples IPC method (kernel buffers without networking stack).
- 
+
+### wakeup-to-running latencies
+
+Next, we look at the latencies between aggregator wakeup to aggregator being scheduled:
+```
+sudo ./aggregator_sched_latency.bt
+```
 
