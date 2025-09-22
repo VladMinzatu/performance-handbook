@@ -571,4 +571,18 @@ Next, we look at the latencies between aggregator wakeup to aggregator being sch
 ```
 sudo ./aggregator_sched_latency.bt
 ```
+We get the following results:
+
+fifo:
+```
+@lat:
+[4K, 8K)               1 |@                                                   |
+[8K, 16K)             12 |@@@@@@@@@@@@@@@@@@@@@                               |
+[16K, 32K)            27 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    |
+[32K, 64K)            29 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[64K, 128K)           15 |@@@@@@@@@@@@@@@@@@@@@@@@@@                          |
+[128K, 256K)           8 |@@@@@@@@@@@@@@                                      |
+[256K, 512K)           0 |                                                    |
+[512K, 1M)             3 |@@@@@                                               |
+```
 
