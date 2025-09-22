@@ -648,3 +648,8 @@ tcp:
 [4M, 8M)               2 |@                                                   |
 ```
 
+Since I'm running this on a system that isn't under load, I would expect the results to reflect the differences in the IPC mechanisms. What we notice:
+- we see that FIFO appears to be performing best in this metric and that makes sense as it implements the most direct path, with minimal buffering logic
+- as for the others, though, I'm not seeing really significant differences. Although they do different kinds of kernel work between the producers writing and the aggregator consuming, this doesn't seem to translate in any significant way in differences between the wakeup time and running time of our aggregator for this test setup.
+
+
