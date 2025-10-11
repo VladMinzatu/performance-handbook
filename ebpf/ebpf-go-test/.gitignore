@@ -1,0 +1,3 @@
+ebpf-go-test
+counter_bpfeb.o
+counter_bpfel.o
