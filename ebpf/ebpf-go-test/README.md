@@ -1,6 +1,6 @@
 # ebpf-go-test
 
-Trying out the local setup using the [Getting Started](https://ebpf-go.dev/guides/getting-started/) guide.
+Trying out the local setup using the [Getting Started](https://ebpf-go.dev/guides/getting-started/) guide: building a packet counting eBPF program.
 
 Build instructions:
 ```
