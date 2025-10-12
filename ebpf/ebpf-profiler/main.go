@@ -19,7 +19,7 @@ import (
 
 const (
 	BpfObjectFilename = "profile_bpfel.o"
-	PerfFreq          = 1 // (Hz)
+	PerfFreq          = 49 // (Hz)
 )
 
 // Mirrors the C struct layout in profile.c.
