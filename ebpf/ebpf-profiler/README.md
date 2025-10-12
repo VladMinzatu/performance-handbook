@@ -11,5 +11,5 @@ go generate && go build
 
 Run:
 ```
-sudo ./ebpf-profiler -pid=7342
+sudo ./ebpf-profiler -pid=1234
 ```
