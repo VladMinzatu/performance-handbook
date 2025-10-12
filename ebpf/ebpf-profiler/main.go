@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"
 	"golang.org/x/sys/unix"
 )
@@ -48,26 +47,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	spec, err := ebpf.LoadCollectionSpec(BpfObjectFilename)
-	if err != nil {
-		log.Fatalf("loading collection spec: %v", err)
+	var objs profileObjects
+	if err := loadProfileObjects(&objs, nil); err != nil {
+		log.Fatal("Loading eBPF objects:", err)
 	}
+	defer objs.Close()
 
-	coll, err := ebpf.NewCollection(spec)
-	if err != nil {
-		log.Fatalf("loading collection into kernel: %v", err)
-	}
-	defer coll.Close()
-
-	prog := coll.Programs["sample"]
-	if prog == nil {
-		log.Fatalf("program \"sample\" not found in object")
-	}
-
-	eventsMap := coll.Maps["events"]
-	if eventsMap == nil {
-		log.Fatalf("map \"events\" not found in object")
-	}
+	prog := objs.profilePrograms.Sample
+	eventsMap := objs.profileMaps.Events
 
 	reader, err := ringbuf.NewReader(eventsMap)
 	if err != nil {
