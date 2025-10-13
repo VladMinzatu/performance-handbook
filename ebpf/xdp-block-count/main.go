@@ -25,14 +25,14 @@ func main() {
 
 	prog := objs.xdp_block_countPrograms.XdpBlockCountProg
 	ipCounters := objs.xdp_block_countMaps.IpCounters
-	// blocklist := objs.xdp_block_countMaps.Blocklist
+	blocklist := objs.xdp_block_countMaps.Blocklist
+	addToBlocklist(blocklist, "127.0.0.1")
 
 	ifname := "enp0s1"
 	iface, err := net.InterfaceByName(ifname)
 	if err != nil {
 		log.Fatalf("Getting interface %s: %s", ifname, err)
 	}
-
 	// Attach XDP to interface
 	l, err := link.AttachXDP(link.XDPOptions{
 		Program:   prog,
@@ -67,7 +67,6 @@ func main() {
 }
 
 func printTop(m *ebpf.Map, topN int) {
-	// iterate map
 	iter := m.Iterate()
 	var key uint32
 	var val uint64
@@ -97,4 +96,22 @@ func uint32ToIP(u uint32) net.IP {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, u)
 	return net.IP(b)
+}
+
+func ipToUint32(ip net.IP) uint32 {
+	ip = ip.To4()
+	return binary.BigEndian.Uint32(ip)
+}
+
+func addToBlocklist(blocklist *ebpf.Map, ip string) {
+	i := net.ParseIP(ip)
+	if i == nil {
+		fmt.Fprintf(os.Stderr, "invalid ip: %s\n", ip)
+		os.Exit(1)
+	}
+	ui := ipToUint32(i)
+	if err := blocklist.Put(ui, uint8(1)); err != nil {
+		fmt.Fprintf(os.Stderr, "adding blocklist ip: %v\n", err)
+		os.Exit(1)
+	}
 }
