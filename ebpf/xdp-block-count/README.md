@@ -15,4 +15,5 @@ Run:
 ```
 sudo ./xdp-block-count
 ```
-test
+
+The program should print the top IPs responsible for incoming packets and their counts every 2 seconds.
