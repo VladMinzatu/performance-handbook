@@ -4,7 +4,8 @@ This is a high level overview of the tools that can be used for performance anal
 
 Here, I cover the following topics:
 - [High Level Linux Tools](01_high_level_linux_tools.md)
-- [Low-Level Tracing and Profiling Tools](02_low_level_tracing_and_profiling.md)
-- [Dynamic Tracing & eBPF-based Tools](03_dynamic_tracing_and_eBPF_based.md)
+- [Linux tracing and performance infrastructure](02_linux_perf_infrastructure.md)
+- [Low-Level Tracing and Profiling Tools](03_perf_tracing_and_profiling.md)
+- [Dynamic Tracing & eBPF-based Tools](04_dynamic_tracing_and_profiling_with_eBPF.md)
 - [Syscall Tracing & Runtime Security Tools](04_syscall_tracing_and_runtime_security.md)
 - [Go Tools for profiling and observability](05_go_profiling_and_observability.md)

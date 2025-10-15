@@ -1,4 +1,4 @@
-# Low-Level Tracing and Profiling Tools
+# perf tracing and profiling
 
 These tools provide fine-grained details about system behavior — from CPU cycles and function calls to system calls and library usage. They're essential for debugging performance issues, understanding application behavior, and profiling workloads.
 
