@@ -1,4 +1,8 @@
-# High-Level (System-Wide) Tools
+# High-Level Linux Tools
+
+These are standard Linux tools that you should have available on a server. They are the first tools to use when you need to investigate performance issues beyond what the the observability tools that collect metrics and traces show and you need to log into the server.
+
+The same topic is covered in the reference article [Linux Performance Analysis in 60,000 ms](https://netflixtechblog.com/linux-performance-analysis-in-60-000-milliseconds-accc10403c55). Consider the other tools listed there in addition to the ones mentioned below.
 
 These tools provide a broad overview of system (i.e. host/node/OS) performance by monitoring CPU, memory, disk I/O, and network activity. They're ideal for quickly identifying bottlenecks or misbehaving processes.
 
