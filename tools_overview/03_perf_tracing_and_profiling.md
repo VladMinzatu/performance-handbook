@@ -1,5 +1,9 @@
 # perf tracing and profiling
 
+All tools mentioned here are part of most major distributions, though you may need to install them (e.g., via apt, yum, or dnf).
+
+These tools are suitable for test enviornments or brief production usage, as they introduce non negligible overhead.
+
 These tools provide fine-grained details about system behavior — from CPU cycles and function calls to system calls and library usage. They're essential for debugging performance issues, understanding application behavior, and profiling workloads.
 
 ## perf
@@ -82,7 +86,6 @@ cat /sys/kernel/debug/tracing/trace
 
 - `perf` and `ftrace` are powerful but can require elevated permissions.
 - `strace` and `ltrace` are great for user-space debugging but introduce some overhead.
-- All tools are part of most major distributions, though you may need to install them (e.g., via apt, yum, or dnf).
 
 ## Bonus: Debugging with GDB
 
