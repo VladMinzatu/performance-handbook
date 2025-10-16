@@ -7,12 +7,13 @@ Linux provides a unified kernel instrumentation framework built from a few key s
 The core primitives are:
 - The `perf_event_open()` API: a syscall interface to the perf_events subsystem (hardware counters, software counters, tracepoints, sampling). The `perf` tool, `eBPF` perf ringbuffers, as well as any profiler using perf_events will use this.
 - kprobes/uprobes: Dynamic instrumentation points that can attach to almost any kernel or user function. Used by both `perf` probes and `eBPF` programs.
-- tracepoints: Static instrumentation points defined in kernel code. Again, both `perf` and `eBPF` can attach to these points
+- tracepoints: Static instrumentation points defined in kernel code. Again, both `perf` and `eBPF` can attach to these points. The available tracepoints can be queried at `/sys/kernel/tracing/available_events`.
 - ftrace: Function-level tracer in the kernel, underlying much of perf’s function graph tracing. `perf`, `ftrace`, and `eBPF` (indirectly) make use of this.
+- fentry/fexit: Function entry/exit. Replacement for kprobe/kretprobe (and preferred now, available in newer kernel versions) with lower overhead, type-safe function instrumentation via BTF. These are `eBPF` specific attachment points.
 - ring buffers (perf buffer or BPF ringbuf): Channels to send data from kernel to user space. Both `perf` and `eBPF` use similar concepts; but `eBPF` adds the BPF-specific ringbufs.
 - BPF maps / programs: In-kernel programs with state and logic (filters, aggregations). This concept is unique to `eBPF`.
 
-So both `perf` and `eBPF` share this “perf_event” and tracing substrate. The difference is in how they are used:
+So both `perf` and `eBPF` share this “perf_event” and tracing substrate. The main difference is in how they are used (and eBPF does add some new capabilities with program types that are not reliant on perf):
 - `perf` is essentially a user-space client of the kernel’s perf_events subsystem. It sets up event sources (counters, sampling, probes), collects raw samples, and postprocesses them.
 - `eBPF` on the other hand, loads small BPF programs that can run custom logic at each event, instead of the kernel emitting raw samples. Aggregation is done in-kernel, hence less data movement and less overhead.
 
