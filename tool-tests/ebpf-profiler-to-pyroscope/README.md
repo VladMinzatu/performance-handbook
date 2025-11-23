@@ -6,12 +6,12 @@ We will use docker:
 docker run -it -p 4040:4040 grafana/pyroscope
 ```
 
-## Running Alloy to pass through OLTP to Pyroscope
+## Running OLTP collector (contrib) to pass through the OLTP to Pyroscope
 
 We will use docker here as well:
 
 ```
-docker run --rm -p 4317:4317 -v "$(pwd)/config.alloy":/etc/alloy/config.alloy:ro grafana/alloy:latest --config /etc/alloy/config.alloy
+docker run --rm -v "$(pwd)/collector-config.yaml":/etc/otelcol/config.yaml -p 4317:4317 otel/opentelemetry-collector-contrib:latest --config  /etc/otelcol/config.yaml  --feature-gates=service.profilesSupport
 ```
 
 ## Running the ebpf-profiler
@@ -23,4 +23,7 @@ cd opentelemetry-ebpf-profiler/
 
 make agent
 ```
-And this creates the `ebpf-profiler` binary.
+And this creates the `ebpf-profiler` binary, which we can now run:
+```
+sudo ./ebpf-profiler -collection-agent=127.0.0.1:4317 -disable-tls
+```

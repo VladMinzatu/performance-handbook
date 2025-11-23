@@ -1,0 +1,18 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "127.0.0.1:4317"
+
+processors:
+  batch:
+
+exporters:
+  otlphttp/pyroscope:
+    endpoint: "http://127.0.0.1:4040"
+
+service:
+  pipelines:
+    profiles:
+      receivers: [otlp]
+      exporters: [otlphttp/pyroscope]
