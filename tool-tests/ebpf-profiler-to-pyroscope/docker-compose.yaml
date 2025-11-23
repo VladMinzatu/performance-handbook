@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  pyroscope:
+    image: grafana/pyroscope:latest
+    container_name: pyroscope
+    ports:
+      - "4040:4040"
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otelcol
+    depends_on:
+      - pyroscope
+    volumes:
+      - ./collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+    command:
+      [
+        "--config=/etc/otelcol/config.yaml",
+        "--feature-gates=service.profilesSupport"
+      ]
