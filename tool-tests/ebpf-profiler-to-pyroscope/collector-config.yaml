@@ -9,7 +9,7 @@ processors:
 
 exporters:
   otlphttp/pyroscope:
-    endpoint: "http://127.0.0.1:4040"
+    endpoint: "http://pyroscope:4040"
 
 service:
   pipelines:

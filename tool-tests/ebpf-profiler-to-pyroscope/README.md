@@ -1,9 +1,14 @@
 
+## Setup
+```
+docker network create otel-net
+```
+
 ## Running Pyroscope
 
 We will use docker:
 ```
-docker run -it -p 4040:4040 grafana/pyroscope
+docker run -it --name pyroscope --network otel-net -p 4040:4040 grafana/pyroscope:latest
 ```
 
 ## Running OLTP collector (contrib) to pass through the OLTP to Pyroscope
@@ -11,7 +16,7 @@ docker run -it -p 4040:4040 grafana/pyroscope
 We will use docker here as well:
 
 ```
-docker run --rm -v "$(pwd)/collector-config.yaml":/etc/otelcol/config.yaml -p 4317:4317 otel/opentelemetry-collector-contrib:latest --config  /etc/otelcol/config.yaml  --feature-gates=service.profilesSupport
+docker run --rm --name otelcol --network otel-net -v "$(pwd)/collector-config.yaml":/etc/otelcol/config.yaml -p 4317:4317 otel/opentelemetry-collector-contrib:latest --config  /etc/otelcol/config.yaml  --feature-gates=service.profilesSupport
 ```
 
 ## Running the ebpf-profiler
