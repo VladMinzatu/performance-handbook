@@ -52,6 +52,9 @@ func main() {
 		Logger:          pyroscope.StandardLogger,
 		ProfileTypes: []pyroscope.ProfileType{
 			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileGoroutines,
 		},
 	})
 
