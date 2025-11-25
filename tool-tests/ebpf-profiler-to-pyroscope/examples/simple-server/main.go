@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -46,7 +47,7 @@ func handlerMixed(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	pyroscope.Start(pyroscope.Config{
+	prof, err := pyroscope.Start(pyroscope.Config{
 		ApplicationName: "example.simple-server",
 		ServerAddress:   "http://localhost:4040",
 		Logger:          pyroscope.StandardLogger,
@@ -57,6 +58,10 @@ func main() {
 			pyroscope.ProfileGoroutines,
 		},
 	})
+	if err != nil {
+		log.Fatalf("Failed to init pyroscope in-process profiler")
+	}
+	defer prof.Stop()
 
 	http.HandleFunc("/fast", handlerFast)
 	http.HandleFunc("/slow", handlerSlow)
