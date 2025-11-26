@@ -56,6 +56,12 @@ func main() {
 			pyroscope.ProfileAllocObjects,
 			pyroscope.ProfileAllocSpace,
 			pyroscope.ProfileGoroutines,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+			pyroscope.ProfileMutexCount,
+			pyroscope.ProfileMutexDuration,
+			pyroscope.ProfileBlockCount,
+			pyroscope.ProfileBlockDuration,
 		},
 	})
 	if err != nil {
