@@ -26,6 +26,11 @@ perf record ./your_app
 perf report
 ```
 
+Tutorials:
+
+- https://perfwiki.github.io/main/
+- https://www.brendangregg.com/perf.html
+
 ## strace
 
 Trace system calls and signals of a process.
