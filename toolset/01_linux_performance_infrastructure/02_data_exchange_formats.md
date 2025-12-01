@@ -1,6 +1,6 @@
 # Data and visualisation interoperability
 
-We talk about this here as another topic where various tools meet.
+We talk about this here as another topic where various tools meet, although this is not as much a Linux-specific topic.
 
 While `perf`, `eBPF`, Go’s pprof, and tracing systems all operate at different layers, over the past decade they’ve converged on a few shared output formats and visualization idioms, especially flamegraphs and trace timelines.
 
