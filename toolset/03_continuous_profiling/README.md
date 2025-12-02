@@ -7,6 +7,8 @@ For more details see the [integration docs](https://grafana.com/docs/pyroscope/l
 
 It thus supports most profiling types that the go tool pprof supports: https://grafana.com/docs/pyroscope/latest/introduction/profiling-types/. Go tracing is out of scope, tracing data is very rich and reserved for offline and focused analysis.
 
+> **Overhead**: That said, some overhead considerations should not be ignored (recall runtime/pprof was covered under offline profiling). Some profile types are heavier than others, sampling rates and sampling windows are configurable and fleet amortization should also be used (also, push is not the only option, agent setups using Grafana agent/alloy are possible).
+
 Additionally, the [opentelemetry-ebpf-profiler](https://github.com/open-telemetry/opentelemetry-ebpf-profiler) can be used in conjunction with Pyroscope as well. This leverages ebpf to support mixed stacktraces between runtimes - stacktraces go from Kernel space through unmodified system libraries all the way into high-level languages.
 
 ## Data encoding

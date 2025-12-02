@@ -6,6 +6,8 @@ The same topic is covered in the reference article [Linux Performance Analysis i
 
 These tools provide a broad overview of system (i.e. host/node/OS) performance by monitoring CPU, memory, disk I/O, and network activity. They're ideal for quickly identifying bottlenecks or misbehaving processes.
 
+Under the hood, the tools almost entirely rely on kernel-maintained accounting exported through procfs (`/proc` pseudo-fs), sysfs and netlink. They don't directly use the advanced performance/trace infrastructure (which provide much richer, lower-level visibility).
+
 ## top
 
 Display real-time summary of system resource usage.
