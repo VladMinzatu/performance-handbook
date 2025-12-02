@@ -1,6 +1,10 @@
 # Go Tools for profiling and observability
 
-These tools are go specific, but unlike the others, they are also platform independent (whereas in the other notes we mainly mentioned Linux tools). So if you're using Go, possibly developing on a Mac, these should probably be the first go-to tools for application level performance profiling and observability.
+These tools are go specific, but unlike the others, they are also platform independent (whereas in the previous notes we mainly mentioned Linux tools).
+
+The functionality in `runtime/pprof` (described here) is the go-to for application level performance profiling and observability. The insights into the go runtime are very rich and much of it cannot be replicated with the other external tooling we've seen.
+
+> **Overhead**: In general, these tools are meant for offline benchmarking and profiling or spurious production usage, but generally not always on profiling. That said, some profile types are heavier than others, sampling rates and sampling windows are configurable and fleet amortization can also be used, and thus runtime/pprof can form the basis of continuous profiling solutions, like the usage in pyroscope-go.
 
 ## Benchmarks
 
