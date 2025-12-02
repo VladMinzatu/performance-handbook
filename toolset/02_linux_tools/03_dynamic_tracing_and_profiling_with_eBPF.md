@@ -2,6 +2,8 @@
 
 Dynamic tracing tools use in-kernel instrumentation to gather rich runtime data with low overhead. eBPF (extended Berkeley Packet Filter) enables safe and efficient programs to run in kernel space, empowering tools for tracing, performance analysis, observability, and security.
 
+> **Overhead**: The technologies in this category are generally production safe when used right: eBPF can power production agents (developed with CO-RE) and tools like BCC and bpftrace are tools that can be used for ad-hoc investigations in a production-safe way in terms of overhead.
+
 ## [eBPF](https://ebpf.io/) (not a tool - the infra underlying all the tools below)
 
 General-purpose in-kernel virtual machine for running sandboxed programs.
