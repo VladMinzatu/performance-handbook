@@ -8,4 +8,4 @@ Same as the set of an application's SLOs should be minimal while capturing the o
 
 The health check for this is if incidents translate to business SLIs being impacted, and in turn, incident impact is reasonably easy to estimate. Incidents should implicitly trigger a the consideration of action items to improve the business SLI definitions.
 
-A dashboard tracks the error budget over 7 and 28 days, reviewed weekly at org level.
+A separate dashboard tracks the error budget over 7 and 28 days with burn down charts, reviewed weekly at org level. Burn-rate based alerting is enabled on each SLI ideally, with associated playbook.
