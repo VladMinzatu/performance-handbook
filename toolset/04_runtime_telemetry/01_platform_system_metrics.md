@@ -20,3 +20,9 @@ Under the hood, metrics come from:
 - procfs (/proc) and sysfs (/sys): node-exporter and other Linux exporters read /proc/stat, /proc/<pid>, /sys/fs/cgroup/… to get CPU, memory, and per-cgroup metrics. This is the classic, default approach for host and process metrics.
 - cgroups: container resource accounting (CPU time, memory usage, blkio) is exposed to userspace via cgroup files — Prometheus node-exporter and kubelet/cAdvisor read these to compute per-container stats.
 - and then there's the k8s api for kubernetes specific stuff, eBPF for low-overhead, high-resolution kernel telemetry and the application level instrumentation.
+
+References:
+
+- https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/hostmetricsreceiver/README.md
+- https://opentelemetry.io/docs/languages/go/instrumentation/
+- https://opentelemetry.io/docs/zero-code/go/autosdk/
