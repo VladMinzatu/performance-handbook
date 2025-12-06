@@ -1,0 +1,46 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+  hostmetrics:
+    root_path: /hostfs
+    collection_interval: 10s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+      filesystem:
+      network:
+      load:
+      processes:
+
+  docker_stats:
+    endpoint: "unix:///var/run/docker.sock"
+    collection_interval: 10s
+
+exporters:
+  logging:
+    loglevel: info
+
+  prometheus:
+    endpoint: "0.0.0.0:8888"
+
+  jaeger:
+    endpoint: "http://jaeger:14268/api/traces"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger, logging]
+    metrics:
+      receivers: [otlp, hostmetrics, docker_stats]
+      processors: [batch]
+      exporters: [prometheus, logging]
+
+processors:
+  batch:
+    timeout: 10s
