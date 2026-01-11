@@ -12,7 +12,7 @@ type Stage[I any, O any] struct {
 	In  <-chan I
 	Out chan<- O
 
-	Fn func(context.Context, I) (O, error)
+	Fn func(I) (O, error) // TODO: could add context.Context as a parameter, but is it necessary or worth it?
 }
 
 func (s *Stage[I, O]) Run(ctx context.Context, wg *sync.WaitGroup) {
@@ -31,7 +31,7 @@ func (s *Stage[I, O]) Run(ctx context.Context, wg *sync.WaitGroup) {
 						return
 					}
 
-					out, err := s.Fn(ctx, in)
+					out, err := s.Fn(in)
 					if err != nil {
 						// TODO: record error
 						continue

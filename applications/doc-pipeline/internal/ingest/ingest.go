@@ -1,7 +1,6 @@
 package ingest
 
 import (
-	"context"
 	"io"
 	"os"
 )
@@ -17,7 +16,7 @@ type Document struct {
 	Text string
 }
 
-func LoadData(ctx context.Context, config IngestConfig, id string) (Document, error) {
+func LoadData(config IngestConfig, id string) (Document, error) {
 	file, err := os.Open(config.Path)
 	if err != nil {
 		return Document{}, err

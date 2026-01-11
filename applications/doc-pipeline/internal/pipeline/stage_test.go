@@ -18,7 +18,7 @@ func TestStage_BasicProcessing(t *testing.T) {
 		Workers: 1,
 		In:      in,
 		Out:     out,
-		Fn: func(ctx context.Context, in int) (int, error) {
+		Fn: func(in int) (int, error) {
 			return in * 2, nil
 		},
 	}
@@ -82,7 +82,7 @@ func TestStage_MultipleWorkers(t *testing.T) {
 		Workers: 3,
 		In:      in,
 		Out:     out,
-		Fn: func(ctx context.Context, in int) (int, error) {
+		Fn: func(in int) (int, error) {
 			// Simulate some work
 			time.Sleep(10 * time.Millisecond)
 			return in * 2, nil
@@ -148,7 +148,7 @@ func TestStage_ContextCancellation(t *testing.T) {
 		Workers: 2,
 		In:      in,
 		Out:     out,
-		Fn: func(ctx context.Context, in int) (int, error) {
+		Fn: func(in int) (int, error) {
 			time.Sleep(100 * time.Millisecond)
 			return in * 2, nil
 		},
@@ -189,7 +189,7 @@ func TestStage_ErrorHandling(t *testing.T) {
 		Workers: 1,
 		In:      in,
 		Out:     out,
-		Fn: func(ctx context.Context, in int) (int, error) {
+		Fn: func(in int) (int, error) {
 			callCount++
 			if in%2 == 0 {
 				return 0, fmt.Errorf("even number error")
@@ -259,7 +259,7 @@ func TestStage_ChannelClosure(t *testing.T) {
 		Workers: 2,
 		In:      in,
 		Out:     out,
-		Fn: func(ctx context.Context, in int) (int, error) {
+		Fn: func(in int) (int, error) {
 			return in * 2, nil
 		},
 	}
