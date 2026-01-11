@@ -1,0 +1,296 @@
+package pipeline
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestStage_BasicProcessing(t *testing.T) {
+	ctx := context.Background()
+	in := make(chan int, 10)
+	out := make(chan int, 10)
+
+	stage := &Stage[int, int]{
+		Name:    "multiply",
+		Workers: 1,
+		In:      in,
+		Out:     out,
+		Fn: func(ctx context.Context, in int) (int, error) {
+			return in * 2, nil
+		},
+	}
+
+	var wg sync.WaitGroup
+	stage.Run(ctx, &wg)
+
+	testInputs := []int{1, 2, 3, 4, 5}
+	for _, v := range testInputs {
+		in <- v
+	}
+	close(in)
+
+	var results []int
+	done := make(chan bool)
+	go func() {
+		for result := range out {
+			results = append(results, result)
+			if len(results) == len(testInputs) {
+				done <- true
+				return
+			}
+		}
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// All results received
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for results")
+	}
+
+	wg.Wait()
+	close(out)
+
+	expected := []int{2, 4, 6, 8, 10}
+	if len(results) != len(expected) {
+		t.Fatalf("expected %d results, got %d", len(expected), len(results))
+	}
+
+	resultMap := make(map[int]int)
+	for _, r := range results {
+		resultMap[r]++
+	}
+
+	for _, exp := range expected {
+		if resultMap[exp] != 1 {
+			t.Errorf("expected result %d to appear once, got %d", exp, resultMap[exp])
+		}
+	}
+}
+
+func TestStage_MultipleWorkers(t *testing.T) {
+	ctx := context.Background()
+	in := make(chan int, 20)
+	out := make(chan int, 20)
+
+	stage := &Stage[int, int]{
+		Name:    "multiply",
+		Workers: 3,
+		In:      in,
+		Out:     out,
+		Fn: func(ctx context.Context, in int) (int, error) {
+			// Simulate some work
+			time.Sleep(10 * time.Millisecond)
+			return in * 2, nil
+		},
+	}
+
+	var wg sync.WaitGroup
+	stage.Run(ctx, &wg)
+
+	testInputs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	for _, v := range testInputs {
+		in <- v
+	}
+	close(in)
+
+	var results []int
+	done := make(chan bool)
+	go func() {
+		for result := range out {
+			results = append(results, result)
+			if len(results) == len(testInputs) {
+				done <- true
+				return
+			}
+		}
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// All results received
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for results")
+	}
+
+	wg.Wait()
+	close(out)
+
+	if len(results) != len(testInputs) {
+		t.Fatalf("expected %d results, got %d", len(testInputs), len(results))
+	}
+
+	resultMap := make(map[int]int)
+	for _, r := range results {
+		resultMap[r]++
+	}
+
+	expected := []int{2, 4, 6, 8, 10, 12, 14, 16, 18, 20}
+	for _, exp := range expected {
+		if resultMap[exp] != 1 {
+			t.Errorf("expected result %d to appear once, got %d", exp, resultMap[exp])
+		}
+	}
+}
+
+func TestStage_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	in := make(chan int, 10)
+	out := make(chan int, 10)
+
+	stage := &Stage[int, int]{
+		Name:    "slow",
+		Workers: 2,
+		In:      in,
+		Out:     out,
+		Fn: func(ctx context.Context, in int) (int, error) {
+			time.Sleep(100 * time.Millisecond)
+			return in * 2, nil
+		},
+	}
+
+	var wg sync.WaitGroup
+	stage.Run(ctx, &wg)
+
+	in <- 1
+	in <- 2
+
+	cancel() // cancel immediately
+
+	done := make(chan bool)
+	go func() {
+		wg.Wait()
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// Workers stopped successfully
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for workers to stop")
+	}
+
+	close(in)
+}
+
+func TestStage_ErrorHandling(t *testing.T) {
+	ctx := context.Background()
+	in := make(chan int, 10)
+	out := make(chan int, 10)
+
+	callCount := 0
+	stage := &Stage[int, int]{
+		Name:    "error-handling",
+		Workers: 1,
+		In:      in,
+		Out:     out,
+		Fn: func(ctx context.Context, in int) (int, error) {
+			callCount++
+			if in%2 == 0 {
+				return 0, fmt.Errorf("even number error")
+			}
+			return in * 2, nil
+		},
+	}
+
+	var wg sync.WaitGroup
+	stage.Run(ctx, &wg)
+
+	testInputs := []int{1, 2, 3, 4, 5}
+	for _, v := range testInputs {
+		in <- v
+	}
+	close(in)
+
+	var results []int
+	done := make(chan bool)
+	go func() {
+		for result := range out {
+			results = append(results, result)
+		}
+		done <- true
+	}()
+
+	wg.Wait()
+	close(out)
+
+	select {
+	case <-done:
+		// Processing complete
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for processing")
+	}
+
+	expectedResults := []int{2, 6, 10}
+	if len(results) != len(expectedResults) {
+		t.Fatalf("expected %d results, got %d", len(expectedResults), len(results))
+	}
+
+	resultMap := make(map[int]int)
+	for _, r := range results {
+		resultMap[r]++
+	}
+
+	for _, exp := range expectedResults {
+		if resultMap[exp] != 1 {
+			t.Errorf("expected result %d to appear once, got %d", exp, resultMap[exp])
+		}
+	}
+
+	if callCount != len(testInputs) {
+		t.Errorf("expected function to be called %d times, got %d", len(testInputs), callCount)
+	}
+
+	wg.Wait()
+}
+
+func TestStage_ChannelClosure(t *testing.T) {
+	ctx := context.Background()
+	in := make(chan int, 10)
+	out := make(chan int, 10)
+
+	stage := &Stage[int, int]{
+		Name:    "closure",
+		Workers: 2,
+		In:      in,
+		Out:     out,
+		Fn: func(ctx context.Context, in int) (int, error) {
+			return in * 2, nil
+		},
+	}
+
+	var wg sync.WaitGroup
+	stage.Run(ctx, &wg)
+
+	in <- 1
+	in <- 2
+	close(in)
+
+	var results []int
+	done := make(chan bool)
+	go func() {
+		for result := range out {
+			results = append(results, result)
+		}
+		done <- true
+	}()
+
+	wg.Wait()
+	close(out)
+
+	select {
+	case <-done:
+		// Processing complete
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for processing")
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+}
