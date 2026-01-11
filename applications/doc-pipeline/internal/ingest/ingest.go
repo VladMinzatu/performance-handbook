@@ -16,14 +16,14 @@ type Document struct {
 	Text string
 }
 
-func LoadData(config IngestConfig, id string) (Document, error) {
-	file, err := os.Open(config.Path)
+func LoadData(path string, textSize int, id string) (Document, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return Document{}, err
 	}
 	defer file.Close()
 
-	limitedReader := io.LimitReader(file, int64(config.TextSize))
+	limitedReader := io.LimitReader(file, int64(textSize))
 	data, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return Document{}, err
