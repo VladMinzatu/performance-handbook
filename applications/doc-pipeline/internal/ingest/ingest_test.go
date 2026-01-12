@@ -7,55 +7,29 @@ import (
 )
 
 func TestLoadData_Success(t *testing.T) {
-	tmpDir := t.TempDir()
-	filePath := filepath.Join(tmpDir, "test.txt")
 	content := "This is test content for the document pipeline"
-	
-	err := os.WriteFile(filePath, []byte(content), 0644)
-	if err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
+	filePath := createTestFile(t, "test.txt", content)
 
 	doc, err := LoadData(filePath, len(content), "test-id-1")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
 
-	if doc.ID != "test-id-1" {
-		t.Errorf("expected ID 'test-id-1', got '%s'", doc.ID)
-	}
-
-	if doc.Text != content {
-		t.Errorf("expected text '%s', got '%s'", content, doc.Text)
-	}
+	assertDocument(t, doc, "test-id-1", content)
 }
 
 func TestLoadData_PartialRead(t *testing.T) {
-	// Create a temporary file with more content than we'll read
-	tmpDir := t.TempDir()
-	filePath := filepath.Join(tmpDir, "test.txt")
 	fullContent := "This is a very long test content that exceeds the text size limit we want to read"
-	
-	err := os.WriteFile(filePath, []byte(fullContent), 0644)
-	if err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
+	filePath := createTestFile(t, "test.txt", fullContent)
 
-	// Read only first 20 bytes
 	textSize := 20
 	doc, err := LoadData(filePath, textSize, "test-id-2")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
 
-	if doc.ID != "test-id-2" {
-		t.Errorf("expected ID 'test-id-2', got '%s'", doc.ID)
-	}
-
 	expectedText := fullContent[:textSize]
-	if doc.Text != expectedText {
-		t.Errorf("expected text '%s', got '%s'", expectedText, doc.Text)
-	}
+	assertDocument(t, doc, "test-id-2", expectedText)
 
 	if len(doc.Text) != textSize {
 		t.Errorf("expected text length %d, got %d", textSize, len(doc.Text))
@@ -63,56 +37,26 @@ func TestLoadData_PartialRead(t *testing.T) {
 }
 
 func TestLoadData_EmptyFile(t *testing.T) {
-	// Create an empty temporary file
-	tmpDir := t.TempDir()
-	filePath := filepath.Join(tmpDir, "empty.txt")
-	
-	file, err := os.Create(filePath)
-	if err != nil {
-		t.Fatalf("failed to create empty file: %v", err)
-	}
-	file.Close()
+	filePath := createEmptyFile(t, "empty.txt")
 
 	doc, err := LoadData(filePath, 100, "test-id-3")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
 
-	if doc.ID != "test-id-3" {
-		t.Errorf("expected ID 'test-id-3', got '%s'", doc.ID)
-	}
-
-	if doc.Text != "" {
-		t.Errorf("expected empty text, got '%s'", doc.Text)
-	}
+	assertDocument(t, doc, "test-id-3", "")
 }
 
 func TestLoadData_TextSizeLargerThanFile(t *testing.T) {
-	// Create a file with less content than textSize
-	tmpDir := t.TempDir()
-	filePath := filepath.Join(tmpDir, "small.txt")
 	content := "small content"
-	
-	err := os.WriteFile(filePath, []byte(content), 0644)
-	if err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
+	filePath := createTestFile(t, "small.txt", content)
 
-	// Request more bytes than file contains
-	textSize := 1000
-	doc, err := LoadData(filePath, textSize, "test-id-4")
+	doc, err := LoadData(filePath, 1000, "test-id-4")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
 
-	if doc.ID != "test-id-4" {
-		t.Errorf("expected ID 'test-id-4', got '%s'", doc.ID)
-	}
-
-	// Should only read what's available
-	if doc.Text != content {
-		t.Errorf("expected text '%s', got '%s'", content, doc.Text)
-	}
+	assertDocument(t, doc, "test-id-4", content)
 
 	if len(doc.Text) != len(content) {
 		t.Errorf("expected text length %d, got %d", len(content), len(doc.Text))
@@ -130,25 +74,47 @@ func TestLoadData_FileNotFound(t *testing.T) {
 }
 
 func TestLoadData_ZeroTextSize(t *testing.T) {
-	tmpDir := t.TempDir()
-	filePath := filepath.Join(tmpDir, "test.txt")
 	content := "some content"
-	
-	err := os.WriteFile(filePath, []byte(content), 0644)
-	if err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
+	filePath := createTestFile(t, "test.txt", content)
 
 	doc, err := LoadData(filePath, 0, "test-id-6")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
 
-	if doc.ID != "test-id-6" {
-		t.Errorf("expected ID 'test-id-6', got '%s'", doc.ID)
-	}
+	assertDocument(t, doc, "test-id-6", "")
+}
 
-	if doc.Text != "" {
-		t.Errorf("expected empty text for zero textSize, got '%s'", doc.Text)
+// Helpers
+func createTestFile(t *testing.T, filename string, content string) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, filename)
+	err := os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+	return filePath
+}
+
+func createEmptyFile(t *testing.T, filename string) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, filename)
+	file, err := os.Create(filePath)
+	if err != nil {
+		t.Fatalf("failed to create empty file: %v", err)
+	}
+	file.Close()
+	return filePath
+}
+
+func assertDocument(t *testing.T, doc Document, expectedID, expectedText string) {
+	t.Helper()
+	if doc.ID != expectedID {
+		t.Errorf("expected ID '%s', got '%s'", expectedID, doc.ID)
+	}
+	if doc.Text != expectedText {
+		t.Errorf("expected text '%s', got '%s'", expectedText, doc.Text)
 	}
 }
