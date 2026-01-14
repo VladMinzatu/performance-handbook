@@ -33,3 +33,7 @@ It is used by `go tool pprof -http=:8080` and some continuour profilers.
 They are a visual layer for events rather than stacks. When you’re not sampling stacks but recording timed spans/events (like tracing):
 
 Chrome Trace Format (CTF) and Perfetto trace format have become the cross-domain standard for timeline-style tracing — you can view traces from browsers, Android, kernel, or eBPF tools in one viewer.
+
+Ref:
+
+- https://thume.ca/2023/12/02/tracing-methods/
