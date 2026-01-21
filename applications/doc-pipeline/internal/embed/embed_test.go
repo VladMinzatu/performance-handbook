@@ -41,11 +41,15 @@ func TestEmbed_EmptyTokens(t *testing.T) {
 
 	result := Embed(doc, 10)
 
-	if len(result) != 10 {
-		t.Errorf("expected embedding length 10, got %d", len(result))
+	if result.ID != "doc-1" {
+		t.Errorf("expected ID 'doc-1', got '%s'", result.ID)
 	}
 
-	for i, v := range result {
+	if len(result.Embedding) != 10 {
+		t.Errorf("expected embedding length 10, got %d", len(result.Embedding))
+	}
+
+	for i, v := range result.Embedding {
 		if !math.IsNaN(v) && v != 0.0 {
 			t.Errorf("expected zero or NaN at index %d, got %f", i, v)
 		}
@@ -62,12 +66,16 @@ func TestEmbed_SingleToken(t *testing.T) {
 
 	result := Embed(doc, 10)
 
-	if len(result) != 10 {
-		t.Errorf("expected embedding length 10, got %d", len(result))
+	if result.ID != "doc-2" {
+		t.Errorf("expected ID 'doc-2', got '%s'", result.ID)
 	}
 
-	assertNormalized(t, result)
-	assertNonZeroSum(t, result)
+	if len(result.Embedding) != 10 {
+		t.Errorf("expected embedding length 10, got %d", len(result.Embedding))
+	}
+
+	assertNormalized(t, result.Embedding)
+	assertNonZeroSum(t, result.Embedding)
 }
 
 func TestEmbed_MultipleTokens(t *testing.T) {
@@ -82,12 +90,16 @@ func TestEmbed_MultipleTokens(t *testing.T) {
 
 	result := Embed(doc, 20)
 
-	if len(result) != 20 {
-		t.Errorf("expected embedding length 20, got %d", len(result))
+	if result.ID != "doc-3" {
+		t.Errorf("expected ID 'doc-3', got '%s'", result.ID)
 	}
 
-	assertNormalized(t, result)
-	assertNonZeroSum(t, result)
+	if len(result.Embedding) != 20 {
+		t.Errorf("expected embedding length 20, got %d", len(result.Embedding))
+	}
+
+	assertNormalized(t, result.Embedding)
+	assertNonZeroSum(t, result.Embedding)
 }
 
 func TestEmbed_DifferentDimensions(t *testing.T) {
@@ -101,10 +113,10 @@ func TestEmbed_DifferentDimensions(t *testing.T) {
 	dims := []int{5, 10, 50, 100, 256}
 	for _, dim := range dims {
 		result := Embed(doc, dim)
-		if len(result) != dim {
-			t.Errorf("expected embedding length %d, got %d", dim, len(result))
+		if len(result.Embedding) != dim {
+			t.Errorf("expected embedding length %d, got %d", dim, len(result.Embedding))
 		}
-		assertNormalized(t, result)
+		assertNormalized(t, result.Embedding)
 	}
 }
 
@@ -120,13 +132,17 @@ func TestEmbed_Deterministic(t *testing.T) {
 	result1 := Embed(doc, 10)
 	result2 := Embed(doc, 10)
 
-	if len(result1) != len(result2) {
+	if result1.ID != result2.ID {
+		t.Errorf("expected same ID, got '%s' and '%s'", result1.ID, result2.ID)
+	}
+
+	if len(result1.Embedding) != len(result2.Embedding) {
 		t.Fatal("results should have same length")
 	}
 
-	for i := range result1 {
-		if math.Abs(result1[i]-result2[i]) > 1e-10 {
-			t.Errorf("results should be identical at index %d: got %f and %f", i, result1[i], result2[i])
+	for i := range result1.Embedding {
+		if math.Abs(result1.Embedding[i]-result2.Embedding[i]) > 1e-10 {
+			t.Errorf("results should be identical at index %d: got %f and %f", i, result1.Embedding[i], result2.Embedding[i])
 		}
 	}
 }
@@ -149,12 +165,12 @@ func TestEmbed_DifferentTokensProduceDifferentEmbeddings(t *testing.T) {
 	result1 := Embed(doc1, 10)
 	result2 := Embed(doc2, 10)
 
-	assertNormalized(t, result1)
-	assertNormalized(t, result2)
+	assertNormalized(t, result1.Embedding)
+	assertNormalized(t, result2.Embedding)
 
 	identical := true
-	for i := range result1 {
-		if math.Abs(result1[i]-result2[i]) > 1e-10 {
+	for i := range result1.Embedding {
+		if math.Abs(result1.Embedding[i]-result2.Embedding[i]) > 1e-10 {
 			identical = false
 			break
 		}
@@ -177,11 +193,11 @@ func TestEmbed_TokenCollision(t *testing.T) {
 
 	result := Embed(doc, 2)
 
-	if len(result) != 2 {
-		t.Errorf("expected embedding length 2, got %d", len(result))
+	if len(result.Embedding) != 2 {
+		t.Errorf("expected embedding length 2, got %d", len(result.Embedding))
 	}
 
-	assertNormalized(t, result)
+	assertNormalized(t, result.Embedding)
 }
 
 func TestEmbed_LargeDimension(t *testing.T) {
@@ -194,11 +210,11 @@ func TestEmbed_LargeDimension(t *testing.T) {
 
 	result := Embed(doc, 1000)
 
-	if len(result) != 1000 {
-		t.Errorf("expected embedding length 1000, got %d", len(result))
+	if len(result.Embedding) != 1000 {
+		t.Errorf("expected embedding length 1000, got %d", len(result.Embedding))
 	}
 
-	assertNormalized(t, result)
+	assertNormalized(t, result.Embedding)
 }
 
 func TestEmbed_ManyTokens(t *testing.T) {
@@ -214,11 +230,11 @@ func TestEmbed_ManyTokens(t *testing.T) {
 
 	result := Embed(doc, 50)
 
-	if len(result) != 50 {
-		t.Errorf("expected embedding length 50, got %d", len(result))
+	if len(result.Embedding) != 50 {
+		t.Errorf("expected embedding length 50, got %d", len(result.Embedding))
 	}
 
-	assertNormalized(t, result)
+	assertNormalized(t, result.Embedding)
 }
 
 func TestEmbed_RepeatedTokens(t *testing.T) {
@@ -233,11 +249,11 @@ func TestEmbed_RepeatedTokens(t *testing.T) {
 
 	result := Embed(doc, 10)
 
-	if len(result) != 10 {
-		t.Errorf("expected embedding length 10, got %d", len(result))
+	if len(result.Embedding) != 10 {
+		t.Errorf("expected embedding length 10, got %d", len(result.Embedding))
 	}
 
-	assertNormalized(t, result)
+	assertNormalized(t, result.Embedding)
 }
 
 func TestEmbed_UnicodeTokens(t *testing.T) {
@@ -252,11 +268,11 @@ func TestEmbed_UnicodeTokens(t *testing.T) {
 
 	result := Embed(doc, 20)
 
-	if len(result) != 20 {
-		t.Errorf("expected embedding length 20, got %d", len(result))
+	if len(result.Embedding) != 20 {
+		t.Errorf("expected embedding length 20, got %d", len(result.Embedding))
 	}
 
-	assertNormalized(t, result)
+	assertNormalized(t, result.Embedding)
 }
 
 func assertNormalized(t *testing.T, vec Embedding) {

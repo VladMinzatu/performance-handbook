@@ -16,7 +16,12 @@ func Hash(data []byte) uint64 {
 
 type Embedding []float64
 
-func Embed(doc tokenize.TokenizedDoc, dim int) Embedding {
+type EmbeddedDoc struct {
+	ID        string
+	Embedding Embedding
+}
+
+func Embed(doc tokenize.TokenizedDoc, dim int) EmbeddedDoc {
 	vec := make([]float64, dim)
 
 	for _, tok := range doc.Tokens {
@@ -30,7 +35,10 @@ func Embed(doc tokenize.TokenizedDoc, dim int) Embedding {
 	}
 
 	normalize(vec)
-	return vec
+	return EmbeddedDoc{
+		ID:        doc.ID,
+		Embedding: vec,
+	}
 }
 
 func normalize(vec []float64) {
