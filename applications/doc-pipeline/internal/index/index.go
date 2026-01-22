@@ -6,6 +6,10 @@ import (
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
 )
 
+const (
+	DefaultCapacity = 1024
+)
+
 type DedupResult struct {
 	ID          string
 	IsDuplicate bool
@@ -21,8 +25,8 @@ type EmbeddingIndex struct {
 
 func NewEmbeddingIndex() *EmbeddingIndex {
 	return &EmbeddingIndex{
-		ids:  make([]string, 0, 1024),
-		vecs: make([][]float64, 0, 1024),
+		ids:  make([]string, 0, DefaultCapacity),
+		vecs: make([][]float64, 0, DefaultCapacity),
 	}
 }
 
