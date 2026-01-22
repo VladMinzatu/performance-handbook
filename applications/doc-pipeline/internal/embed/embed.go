@@ -21,7 +21,7 @@ type EmbeddedDoc struct {
 	Embedding Embedding
 }
 
-func Embed(doc tokenize.TokenizedDoc, dim int) EmbeddedDoc {
+func Embed(doc tokenize.TokenizedDoc, dim int) (EmbeddedDoc, error) {
 	vec := make([]float64, dim)
 
 	for _, tok := range doc.Tokens {
@@ -38,7 +38,7 @@ func Embed(doc tokenize.TokenizedDoc, dim int) EmbeddedDoc {
 	return EmbeddedDoc{
 		ID:        doc.ID,
 		Embedding: vec,
-	}
+	}, nil
 }
 
 func normalize(vec []float64) {
