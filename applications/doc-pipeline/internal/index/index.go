@@ -26,7 +26,7 @@ func NewEmbeddingIndex() *EmbeddingIndex {
 	}
 }
 
-func DedupAndIndex(idx *EmbeddingIndex, doc embed.EmbeddedDoc, threshold float64) DedupResult { // TODO: convert to closure to fit in pipeline stage
+func DedupAndIndex(idx *EmbeddingIndex, doc embed.EmbeddedDoc, threshold float64) (DedupResult, error) {
 	// snapshot
 	idx.mu.RLock()
 	n := len(idx.ids)
@@ -62,7 +62,7 @@ func DedupAndIndex(idx *EmbeddingIndex, doc embed.EmbeddedDoc, threshold float64
 		IsDuplicate: isDup,
 		NearestID:   bestID,
 		Similarity:  bestScore,
-	}
+	}, nil
 }
 
 func cosine(a, b []float64) float64 {
