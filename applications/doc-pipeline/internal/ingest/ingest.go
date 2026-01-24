@@ -16,12 +16,18 @@ type Document struct {
 	Text string
 }
 
-func LoadData(path string, textSize int, id string) (Document, error) {
+func LoadData(path string, offset int, textSize int, id string) (Document, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return Document{}, err
 	}
 	defer file.Close()
+
+	// Seek to the specified offset
+	_, err = file.Seek(int64(offset), io.SeekStart)
+	if err != nil {
+		return Document{}, err
+	}
 
 	limitedReader := io.LimitReader(file, int64(textSize))
 	data, err := io.ReadAll(limitedReader)

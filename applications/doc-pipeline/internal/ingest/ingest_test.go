@@ -10,7 +10,7 @@ func TestLoadData_Success(t *testing.T) {
 	content := "This is test content for the document pipeline"
 	filePath := createTestFile(t, "test.txt", content)
 
-	doc, err := LoadData(filePath, len(content), "test-id-1")
+	doc, err := LoadData(filePath, 0, len(content), "test-id-1")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
@@ -23,7 +23,7 @@ func TestLoadData_PartialRead(t *testing.T) {
 	filePath := createTestFile(t, "test.txt", fullContent)
 
 	textSize := 20
-	doc, err := LoadData(filePath, textSize, "test-id-2")
+	doc, err := LoadData(filePath, 0, textSize, "test-id-2")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestLoadData_PartialRead(t *testing.T) {
 func TestLoadData_EmptyFile(t *testing.T) {
 	filePath := createEmptyFile(t, "empty.txt")
 
-	doc, err := LoadData(filePath, 100, "test-id-3")
+	doc, err := LoadData(filePath, 0, 100, "test-id-3")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestLoadData_TextSizeLargerThanFile(t *testing.T) {
 	content := "small content"
 	filePath := createTestFile(t, "small.txt", content)
 
-	doc, err := LoadData(filePath, 1000, "test-id-4")
+	doc, err := LoadData(filePath, 0, 1000, "test-id-4")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestLoadData_FileNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	nonExistentPath := filepath.Join(tmpDir, "nonexistent.txt")
 
-	_, err := LoadData(nonExistentPath, 100, "test-id-5")
+	_, err := LoadData(nonExistentPath, 0, 100, "test-id-5")
 	if err == nil {
 		t.Fatal("expected error for non-existent file, got nil")
 	}
@@ -77,12 +77,44 @@ func TestLoadData_ZeroTextSize(t *testing.T) {
 	content := "some content"
 	filePath := createTestFile(t, "test.txt", content)
 
-	doc, err := LoadData(filePath, 0, "test-id-6")
+	doc, err := LoadData(filePath, 0, 0, "test-id-6")
 	if err != nil {
 		t.Fatalf("LoadData failed: %v", err)
 	}
 
 	assertDocument(t, doc, "test-id-6", "")
+}
+
+func TestLoadData_WithOffset(t *testing.T) {
+	fullContent := "This is a very long test content that exceeds the text size limit we want to read"
+	filePath := createTestFile(t, "test.txt", fullContent)
+
+	offset := 20
+	textSize := 15
+	doc, err := LoadData(filePath, offset, textSize, "test-id-7")
+	if err != nil {
+		t.Fatalf("LoadData failed: %v", err)
+	}
+
+	expectedText := fullContent[offset : offset+textSize]
+	assertDocument(t, doc, "test-id-7", expectedText)
+
+	if len(doc.Text) != textSize {
+		t.Errorf("expected text length %d, got %d", textSize, len(doc.Text))
+	}
+}
+
+func TestLoadData_OffsetBeyondFileSize(t *testing.T) {
+	content := "small content"
+	filePath := createTestFile(t, "small.txt", content)
+
+	offset := len(content) + 100
+	doc, err := LoadData(filePath, offset, 100, "test-id-8")
+	if err != nil {
+		t.Fatalf("LoadData failed: %v", err)
+	}
+
+	assertDocument(t, doc, "test-id-8", "")
 }
 
 // Helpers
