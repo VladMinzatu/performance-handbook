@@ -5,10 +5,11 @@ import (
 	"os"
 )
 
-type IngestConfig struct {
-	DocsPerSec int
-	TextSize   int
-	Path       string
+type DataLoadingConfig struct {
+	ID       string
+	FilePath string
+	Offset   int
+	TextSize int
 }
 
 type Document struct {
@@ -16,27 +17,26 @@ type Document struct {
 	Text string
 }
 
-func LoadData(path string, offset int, textSize int, id string) (Document, error) {
-	file, err := os.Open(path)
+func LoadData(config DataLoadingConfig) (Document, error) {
+	file, err := os.Open(config.FilePath)
 	if err != nil {
 		return Document{}, err
 	}
 	defer file.Close()
 
-	// Seek to the specified offset
-	_, err = file.Seek(int64(offset), io.SeekStart)
+	_, err = file.Seek(int64(config.Offset), io.SeekStart)
 	if err != nil {
 		return Document{}, err
 	}
 
-	limitedReader := io.LimitReader(file, int64(textSize))
+	limitedReader := io.LimitReader(file, int64(config.TextSize))
 	data, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return Document{}, err
 	}
 
 	return Document{
-		ID:   id,
+		ID:   config.ID,
 		Text: string(data),
 	}, nil
 }
