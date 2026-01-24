@@ -157,7 +157,6 @@ func TestLoadData_OffsetBeyondFileSize(t *testing.T) {
 	assertDocument(t, doc, "test-id-8", "")
 }
 
-// Helpers
 func createTestFile(t *testing.T, filename string, content string) string {
 	t.Helper()
 	tmpDir := t.TempDir()
