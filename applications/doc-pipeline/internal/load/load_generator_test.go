@@ -166,7 +166,7 @@ func TestLoadGenerator_RunEmitsRequests(t *testing.T) {
 
 	for len(results) < 5 {
 		select {
-		case req, ok := <-gen.out:
+		case req, ok := <-gen.Out:
 			if !ok {
 				t.Fatalf("Output channel closed unexpectedly")
 			}

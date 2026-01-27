@@ -19,8 +19,9 @@ type LoadGeneratorConfig struct {
 }
 
 type LoadGenerator struct {
+	Out chan ingest.DataLoadingConfig
+
 	config  LoadGeneratorConfig
-	out     chan ingest.DataLoadingConfig
 	counter int
 	rng     *rand.Rand
 }
@@ -28,7 +29,7 @@ type LoadGenerator struct {
 func NewLoadGenerator(config LoadGeneratorConfig) *LoadGenerator {
 	return &LoadGenerator{
 		config:  config,
-		out:     make(chan ingest.DataLoadingConfig),
+		Out:     make(chan ingest.DataLoadingConfig),
 		counter: 0,
 		rng:     rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
@@ -36,7 +37,7 @@ func NewLoadGenerator(config LoadGeneratorConfig) *LoadGenerator {
 
 func (l *LoadGenerator) Run(ctx context.Context) {
 	go func() {
-		defer close(l.out)
+		defer close(l.Out)
 
 		ticker := time.NewTicker(time.Second / time.Duration(l.config.RatePerSec))
 		defer ticker.Stop()
@@ -46,7 +47,7 @@ func (l *LoadGenerator) Run(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				l.out <- generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
+				l.Out <- generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
 				l.counter++
 			}
 		}
@@ -59,7 +60,6 @@ func generateRandomDataLoadingRequest(
 	rng *rand.Rand,
 ) ingest.DataLoadingConfig {
 
-	// Sanity checks and clamping
 	minSize := config.MinTextSize
 	maxSize := config.MaxTextSize
 
@@ -76,7 +76,6 @@ func generateRandomDataLoadingRequest(
 		minSize = config.FileSize
 	}
 
-	// Random text size in [minSize, maxSize]
 	var textSize int
 	if maxSize == minSize {
 		textSize = minSize
@@ -84,13 +83,11 @@ func generateRandomDataLoadingRequest(
 		textSize = minSize + rng.Intn(maxSize-minSize+1)
 	}
 
-	// Compute maximum valid offset so that offset + textSize <= FileSize
 	maxOffset := config.FileSize - textSize
 	if maxOffset < 0 {
 		maxOffset = 0
 	}
 
-	// Random offset in [0, maxOffset]
 	var offset int
 	if maxOffset == 0 {
 		offset = 0
