@@ -154,7 +154,7 @@ func TestLoadGenerator_RunEmitsRequests(t *testing.T) {
 		FileSize:    10_000,
 	}
 
-	gen := NewLoadGenerator(config)
+	gen := NewLoadGenerator(config, make(chan ingest.DataLoadingConfig))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

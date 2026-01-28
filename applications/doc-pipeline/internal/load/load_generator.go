@@ -26,10 +26,10 @@ type LoadGenerator struct {
 	rng     *rand.Rand
 }
 
-func NewLoadGenerator(config LoadGeneratorConfig) *LoadGenerator {
+func NewLoadGenerator(config LoadGeneratorConfig, outChan chan ingest.DataLoadingConfig) *LoadGenerator {
 	return &LoadGenerator{
 		config:  config,
-		Out:     make(chan ingest.DataLoadingConfig),
+		Out:     outChan,
 		counter: 0,
 		rng:     rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
