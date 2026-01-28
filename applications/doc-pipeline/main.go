@@ -47,12 +47,13 @@ func main() {
 	tokenizeStage.Run(context.Background(), &sync.WaitGroup{})
 
 	embeddedDocChan := make(chan embed.EmbeddedDoc)
+	embedder := embed.NewEmbedder(1024)
 	embedStage := pipeline.Stage[tokenize.TokenizedDoc, embed.EmbeddedDoc]{
 		Name:    "embed",
 		Workers: 10,
 		In:      tokenizedDocChan,
 		Out:     embeddedDocChan,
-		Fn:      embed.Embed,
+		Fn:      embedder.Embed,
 	}
 	embedStage.Run(context.Background(), &sync.WaitGroup{})
 

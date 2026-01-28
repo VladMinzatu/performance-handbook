@@ -39,7 +39,8 @@ func TestEmbed_EmptyTokens(t *testing.T) {
 		Tokens: []tokenize.Token{},
 	}
 
-	result, err := Embed(doc, 10)
+	embedder := NewEmbedder(10)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -67,7 +68,8 @@ func TestEmbed_SingleToken(t *testing.T) {
 		},
 	}
 
-	result, err := Embed(doc, 10)
+	embedder := NewEmbedder(10)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -94,7 +96,8 @@ func TestEmbed_MultipleTokens(t *testing.T) {
 		},
 	}
 
-	result, err := Embed(doc, 20)
+	embedder := NewEmbedder(20)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -121,7 +124,8 @@ func TestEmbed_DifferentDimensions(t *testing.T) {
 
 	dims := []int{5, 10, 50, 100, 256}
 	for _, dim := range dims {
-		result, err := Embed(doc, dim)
+		embedder := NewEmbedder(dim)
+		result, err := embedder.Embed(doc)
 		if err != nil {
 			t.Fatalf("Embed failed: %v", err)
 		}
@@ -141,11 +145,12 @@ func TestEmbed_Deterministic(t *testing.T) {
 		},
 	}
 
-	result1, err := Embed(doc, 10)
+	embedder := NewEmbedder(10)
+	result1, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
-	result2, err := Embed(doc, 10)
+	result2, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -180,11 +185,12 @@ func TestEmbed_DifferentTokensProduceDifferentEmbeddings(t *testing.T) {
 		},
 	}
 
-	result1, err := Embed(doc1, 10)
+	embedder := NewEmbedder(10)
+	result1, err := embedder.Embed(doc1)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
-	result2, err := Embed(doc2, 10)
+	result2, err := embedder.Embed(doc2)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -215,7 +221,8 @@ func TestEmbed_TokenCollision(t *testing.T) {
 		},
 	}
 
-	result, err := Embed(doc, 2)
+	embedder := NewEmbedder(2)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -235,7 +242,8 @@ func TestEmbed_LargeDimension(t *testing.T) {
 		},
 	}
 
-	result, err := Embed(doc, 1000)
+	embedder := NewEmbedder(1000)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -258,7 +266,8 @@ func TestEmbed_ManyTokens(t *testing.T) {
 		Tokens: tokens,
 	}
 
-	result, err := Embed(doc, 50)
+	embedder := NewEmbedder(50)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -280,7 +289,8 @@ func TestEmbed_RepeatedTokens(t *testing.T) {
 		},
 	}
 
-	result, err := Embed(doc, 10)
+	embedder := NewEmbedder(10)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
@@ -302,7 +312,8 @@ func TestEmbed_UnicodeTokens(t *testing.T) {
 		},
 	}
 
-	result, err := Embed(doc, 20)
+	embedder := NewEmbedder(20)
+	result, err := embedder.Embed(doc)
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}

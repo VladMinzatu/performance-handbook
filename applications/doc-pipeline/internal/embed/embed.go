@@ -21,12 +21,20 @@ type EmbeddedDoc struct {
 	Embedding Embedding
 }
 
-func Embed(doc tokenize.TokenizedDoc, dim int) (EmbeddedDoc, error) {
-	vec := make([]float64, dim)
+type Embedder struct {
+	dim int
+}
+
+func NewEmbedder(dim int) *Embedder {
+	return &Embedder{dim: dim}
+}
+
+func (e *Embedder) Embed(doc tokenize.TokenizedDoc) (EmbeddedDoc, error) {
+	vec := make([]float64, e.dim)
 
 	for _, tok := range doc.Tokens {
 		h := Hash([]byte(tok.Term))
-		idx := int(h % uint64(dim))
+		idx := int(h % uint64(e.dim))
 		sign := 1.0
 		if h&1 == 1 {
 			sign = -1.0
