@@ -58,12 +58,13 @@ func main() {
 	embedStage.Run(context.Background(), &sync.WaitGroup{})
 
 	indexChan := make(chan index.DedupResult)
+	idx := index.NewEmbeddingIndex(0.8)
 	indexStage := pipeline.Stage[embed.EmbeddedDoc, index.DedupResult]{
 		Name:    "index",
 		Workers: 10,
 		In:      embeddedDocChan,
 		Out:     indexChan,
-		Fn:      index.DedupAndIndex,
+		Fn:      idx.DedupAndIndex,
 	}
 	indexStage.Run(context.Background(), &sync.WaitGroup{})
 

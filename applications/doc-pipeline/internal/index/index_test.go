@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewEmbeddingIndex(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	if idx == nil {
 		t.Fatal("NewEmbeddingIndex returned nil")
@@ -25,13 +25,13 @@ func TestNewEmbeddingIndex(t *testing.T) {
 }
 
 func TestDedupAndIndex_EmptyIndex(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 	doc := embed.EmbeddedDoc{
 		ID:        "doc-1",
 		Embedding: createEmbedding(10, []int{0}),
 	}
 
-	result, err := DedupAndIndex(idx, doc, 0.8)
+	result, err := idx.DedupAndIndex(doc)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestDedupAndIndex_EmptyIndex(t *testing.T) {
 }
 
 func TestDedupAndIndex_NonDuplicate(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -74,12 +74,12 @@ func TestDedupAndIndex_NonDuplicate(t *testing.T) {
 		Embedding: createEmbedding(10, []int{5}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.8)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc2, 0.8)
+	result, err := idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestDedupAndIndex_NonDuplicate(t *testing.T) {
 }
 
 func TestDedupAndIndex_Duplicate(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -106,12 +106,12 @@ func TestDedupAndIndex_Duplicate(t *testing.T) {
 		Embedding: createEmbedding(10, []int{0}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.8)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc2, 0.8)
+	result, err := idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestDedupAndIndex_Duplicate(t *testing.T) {
 }
 
 func TestDedupAndIndex_ThresholdBoundary(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -146,12 +146,12 @@ func TestDedupAndIndex_ThresholdBoundary(t *testing.T) {
 		Embedding: createEmbedding(10, []int{0}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.8)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc2, 0.99)
+	result, err := idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestDedupAndIndex_ThresholdBoundary(t *testing.T) {
 }
 
 func TestDedupAndIndex_MultipleDocuments(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	docs := []embed.EmbeddedDoc{
 		{ID: "doc-1", Embedding: createEmbedding(10, []int{0})},
@@ -179,7 +179,7 @@ func TestDedupAndIndex_MultipleDocuments(t *testing.T) {
 	}
 
 	for i, doc := range docs {
-		result, err := DedupAndIndex(idx, doc, 0.8)
+		result, err := idx.DedupAndIndex(doc)
 		if err != nil {
 			t.Fatalf("DedupAndIndex failed for doc-%d: %v", i+1, err)
 		}
@@ -195,7 +195,7 @@ func TestDedupAndIndex_MultipleDocuments(t *testing.T) {
 }
 
 func TestDedupAndIndex_FindNearest(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -212,17 +212,17 @@ func TestDedupAndIndex_FindNearest(t *testing.T) {
 		Embedding: createEmbedding(10, []int{0}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.8)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	_, err = DedupAndIndex(idx, doc2, 0.8)
+	_, err = idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc3, 0.8)
+	result, err := idx.DedupAndIndex(doc3)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestDedupAndIndex_FindNearest(t *testing.T) {
 }
 
 func TestDedupAndIndex_ConcurrentAccess(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 	var wg sync.WaitGroup
 	numDocs := 100
 
@@ -249,7 +249,7 @@ func TestDedupAndIndex_ConcurrentAccess(t *testing.T) {
 				ID:        string(rune('a' + id%26)),
 				Embedding: createEmbedding(10, []int{id}),
 			}
-			_, err := DedupAndIndex(idx, doc, 0.8)
+			_, err := idx.DedupAndIndex(doc)
 			if err != nil {
 				t.Errorf("DedupAndIndex failed: %v", err)
 			}
@@ -264,14 +264,14 @@ func TestDedupAndIndex_ConcurrentAccess(t *testing.T) {
 }
 
 func TestDedupAndIndex_ConcurrentDuplicateDetection(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
 		Embedding: createEmbedding(10, []int{0}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.8)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestDedupAndIndex_ConcurrentDuplicateDetection(t *testing.T) {
 				ID:        "duplicate",
 				Embedding: createEmbedding(10, []int{0}),
 			}
-			result, err := DedupAndIndex(idx, doc, 0.8)
+			result, err := idx.DedupAndIndex(doc)
 			if err != nil {
 				t.Errorf("DedupAndIndex failed: %v", err)
 				return
@@ -314,7 +314,7 @@ func TestDedupAndIndex_ConcurrentDuplicateDetection(t *testing.T) {
 }
 
 func TestDedupAndIndex_VerySimilar(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -326,12 +326,12 @@ func TestDedupAndIndex_VerySimilar(t *testing.T) {
 		Embedding: createEmbedding(100, []int{0, 1, 2, 3}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.8)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc2, 0.8)
+	result, err := idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -342,7 +342,7 @@ func TestDedupAndIndex_VerySimilar(t *testing.T) {
 }
 
 func TestDedupAndIndex_VeryDifferent(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -354,12 +354,12 @@ func TestDedupAndIndex_VeryDifferent(t *testing.T) {
 		Embedding: createEmbedding(10, []int{9}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.8)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc2, 0.8)
+	result, err := idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -374,7 +374,7 @@ func TestDedupAndIndex_VeryDifferent(t *testing.T) {
 }
 
 func TestDedupAndIndex_ZeroThreshold(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.0)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -386,12 +386,12 @@ func TestDedupAndIndex_ZeroThreshold(t *testing.T) {
 		Embedding: createEmbedding(10, []int{9}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 0.0)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc2, 0.0)
+	result, err := idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -404,7 +404,7 @@ func TestDedupAndIndex_ZeroThreshold(t *testing.T) {
 }
 
 func TestDedupAndIndex_OneThreshold(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(1.0)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -416,12 +416,12 @@ func TestDedupAndIndex_OneThreshold(t *testing.T) {
 		Embedding: createEmbedding(10, []int{0}),
 	}
 
-	_, err := DedupAndIndex(idx, doc1, 1.0)
+	_, err := idx.DedupAndIndex(doc1)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
 
-	result, err := DedupAndIndex(idx, doc2, 1.0)
+	result, err := idx.DedupAndIndex(doc2)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}
@@ -438,14 +438,14 @@ func TestDedupAndIndex_OneThreshold(t *testing.T) {
 }
 
 func TestDedupAndIndex_LargeEmbedding(t *testing.T) {
-	idx := NewEmbeddingIndex()
+	idx := NewEmbeddingIndex(0.8)
 
 	doc := embed.EmbeddedDoc{
 		ID:        "doc-1",
 		Embedding: createEmbedding(1000, []int{0, 100, 500, 999}),
 	}
 
-	result, err := DedupAndIndex(idx, doc, 0.8)
+	result, err := idx.DedupAndIndex(doc)
 	if err != nil {
 		t.Fatalf("DedupAndIndex failed: %v", err)
 	}

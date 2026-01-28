@@ -18,19 +18,21 @@ type DedupResult struct {
 }
 
 type EmbeddingIndex struct {
-	mu   sync.RWMutex
-	ids  []string
-	vecs [][]float64
+	mu             sync.RWMutex
+	ids            []string
+	vecs           [][]float64
+	dedupThreshold float64
 }
 
-func NewEmbeddingIndex() *EmbeddingIndex {
+func NewEmbeddingIndex(dedupThreshold float64) *EmbeddingIndex {
 	return &EmbeddingIndex{
-		ids:  make([]string, 0, DefaultCapacity),
-		vecs: make([][]float64, 0, DefaultCapacity),
+		ids:            make([]string, 0, DefaultCapacity),
+		vecs:           make([][]float64, 0, DefaultCapacity),
+		dedupThreshold: dedupThreshold,
 	}
 }
 
-func DedupAndIndex(idx *EmbeddingIndex, doc embed.EmbeddedDoc, threshold float64) (DedupResult, error) {
+func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, error) {
 	// snapshot
 	idx.mu.RLock()
 	n := len(idx.ids)
@@ -52,7 +54,7 @@ func DedupAndIndex(idx *EmbeddingIndex, doc embed.EmbeddedDoc, threshold float64
 		}
 	}
 
-	isDup := bestScore >= threshold
+	isDup := bestScore >= idx.dedupThreshold
 
 	if !isDup {
 		idx.mu.Lock()
