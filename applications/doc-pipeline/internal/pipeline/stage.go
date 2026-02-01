@@ -9,13 +9,31 @@ type Stage[I any, O any] struct {
 	Name    string
 	Workers int
 
-	In  <-chan I
-	Out chan<- O
-
-	Fn func(I) (O, error) // TODO: could add context.Context as a parameter, but is it necessary or worth it?
+	in <-chan I
+	fn func(I) (O, error) // TODO: could add context.Context as a parameter, but is it necessary or worth it?
 }
 
-func (s *Stage[I, O]) Run(ctx context.Context, wg *sync.WaitGroup) {
+func NewStage[I any, O any](
+	name string,
+	workers int,
+	in <-chan I,
+	fn func(I) (O, error),
+) *Stage[I, O] {
+	if workers <= 0 {
+		workers = 1
+	}
+
+	return &Stage[I, O]{
+		Name:    name,
+		Workers: workers,
+		in:      in,
+		fn:      fn,
+	}
+}
+
+func (s *Stage[I, O]) Run(ctx context.Context, wg *sync.WaitGroup) <-chan O {
+	out := make(chan O)
+
 	for i := 0; i < s.Workers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
@@ -26,19 +44,19 @@ func (s *Stage[I, O]) Run(ctx context.Context, wg *sync.WaitGroup) {
 				case <-ctx.Done():
 					return
 
-				case in, ok := <-s.In:
+				case in, ok := <-s.in:
 					if !ok {
 						return
 					}
 
-					out, err := s.Fn(in)
+					outVal, err := s.fn(in)
 					if err != nil {
 						// TODO: record error
 						continue
 					}
 
 					select {
-					case s.Out <- out:
+					case out <- outVal:
 						// TODO: record latency metric
 					case <-ctx.Done():
 						return
@@ -47,4 +65,11 @@ func (s *Stage[I, O]) Run(ctx context.Context, wg *sync.WaitGroup) {
 			}
 		}(i)
 	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	return out
 }
