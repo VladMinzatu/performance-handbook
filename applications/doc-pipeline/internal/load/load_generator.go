@@ -9,6 +9,8 @@ import (
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/ingest"
 )
 
+const DefaultBufferSize = 100
+
 type LoadGeneratorConfig struct {
 	MinTextSize int    // e.g. 1_000
 	MaxTextSize int    // e.g. 20_000
@@ -19,25 +21,30 @@ type LoadGeneratorConfig struct {
 }
 
 type LoadGenerator struct {
-	Out chan ingest.DataLoadingConfig
-
-	config  LoadGeneratorConfig
-	counter int
-	rng     *rand.Rand
+	config     LoadGeneratorConfig
+	bufferSize int
+	counter    int
+	rng        *rand.Rand
 }
 
-func NewLoadGenerator(config LoadGeneratorConfig, outChan chan ingest.DataLoadingConfig) *LoadGenerator {
+func NewLoadGenerator(config LoadGeneratorConfig, bufferSize int) *LoadGenerator {
+	if bufferSize <= 0 {
+		bufferSize = DefaultBufferSize
+	}
+
 	return &LoadGenerator{
-		config:  config,
-		Out:     outChan,
-		counter: 0,
-		rng:     rand.New(rand.NewSource(time.Now().UnixNano())),
+		config:     config,
+		bufferSize: bufferSize,
+		counter:    0,
+		rng:        rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
-func (l *LoadGenerator) Run(ctx context.Context) {
+func (l *LoadGenerator) Run(ctx context.Context) <-chan ingest.DataLoadingConfig {
+	out := make(chan ingest.DataLoadingConfig, 100)
+
 	go func() {
-		defer close(l.Out)
+		defer close(out)
 
 		ticker := time.NewTicker(time.Second / time.Duration(l.config.RatePerSec))
 		defer ticker.Stop()
@@ -47,11 +54,13 @@ func (l *LoadGenerator) Run(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				l.Out <- generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
+				out <- generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
 				l.counter++
 			}
 		}
 	}()
+
+	return out
 }
 
 func generateRandomDataLoadingRequest(

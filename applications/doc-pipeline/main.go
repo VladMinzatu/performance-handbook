@@ -18,9 +18,8 @@ func main() {
 		FilePath:    "data/shakespeare.txt",
 		FileSize:    5436475,
 	}
-	dataLoadingChan := make(chan ingest.DataLoadingConfig)
-	generator := load.NewLoadGenerator(generatorConfig, dataLoadingChan)
-	generator.Run(context.Background())
+	generator := load.NewLoadGenerator(generatorConfig, 100)
+	dataLoadingChan := generator.Run(context.Background())
 
 	dataLoadingStage := pipeline.NewStage(
 		"load",

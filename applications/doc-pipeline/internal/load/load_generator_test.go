@@ -154,19 +154,19 @@ func TestLoadGenerator_RunEmitsRequests(t *testing.T) {
 		FileSize:    10_000,
 	}
 
-	gen := NewLoadGenerator(config, make(chan ingest.DataLoadingConfig))
+	gen := NewLoadGenerator(config, 100)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	gen.Run(ctx)
+	out := gen.Run(ctx)
 
 	var results []ingest.DataLoadingConfig
 	timeout := time.After(100 * time.Millisecond)
 
 	for len(results) < 5 {
 		select {
-		case req, ok := <-gen.Out:
+		case req, ok := <-out:
 			if !ok {
 				t.Fatalf("Output channel closed unexpectedly")
 			}
