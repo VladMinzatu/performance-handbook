@@ -5,9 +5,12 @@ import (
 	"sync"
 )
 
+const DefaultBufferSize = 100
+
 type Stage[I any, O any] struct {
-	Name    string
-	Workers int
+	Name       string
+	Workers    int
+	BufferSize int
 
 	in <-chan I
 	fn func(I) (O, error) // TODO: could add context.Context as a parameter, but is it necessary or worth it?
@@ -16,26 +19,33 @@ type Stage[I any, O any] struct {
 func NewStage[I any, O any](
 	name string,
 	workers int,
+	bufferSize int,
 	in <-chan I,
 	fn func(I) (O, error),
 ) *Stage[I, O] {
 	if workers <= 0 {
 		workers = 1
 	}
+	if bufferSize <= 0 {
+		bufferSize = DefaultBufferSize
+	}
 
 	return &Stage[I, O]{
-		Name:    name,
-		Workers: workers,
-		in:      in,
-		fn:      fn,
+		Name:       name,
+		Workers:    workers,
+		BufferSize: bufferSize,
+		in:         in,
+		fn:         fn,
 	}
 }
 
-func (s *Stage[I, O]) Run(ctx context.Context, wg *sync.WaitGroup) <-chan O {
-	out := make(chan O)
+func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
+	out := make(chan O, s.BufferSize)
+
+	var wg sync.WaitGroup
+	wg.Add(s.Workers)
 
 	for i := 0; i < s.Workers; i++ {
-		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
 

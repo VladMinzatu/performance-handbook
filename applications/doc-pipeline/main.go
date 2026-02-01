@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/ingest"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/load"
@@ -23,29 +22,18 @@ func main() {
 	generator := load.NewLoadGenerator(generatorConfig, dataLoadingChan)
 	generator.Run(context.Background())
 
-	documentChan := make(chan ingest.Document)
-	dataLoadingStage := pipeline.Stage[ingest.DataLoadingConfig, ingest.Document]{
-		Name:    "load",
-		Workers: 10,
-		In:      dataLoadingChan,
-		Out:     documentChan,
-		Fn:      ingest.LoadData,
-	}
-	dataLoadingStage.Run(context.Background(), &sync.WaitGroup{})
+	dataLoadingStage := pipeline.NewStage(
+		"load",
+		10,
+		100,
+		dataLoadingChan,
+		ingest.LoadData,
+	)
+	documentChan := dataLoadingStage.Run(context.Background())
 
 	for doc := range documentChan {
 		fmt.Println(doc.ID)
 	}
-
-	// tokenizedDocChan := make(chan tokenize.TokenizedDoc)
-	// tokenizeStage := pipeline.Stage[ingest.Document, tokenize.TokenizedDoc]{
-	// 	Name:    "tokenize",
-	// 	Workers: 10,
-	// 	In:      documentChan,
-	// 	Out:     tokenizedDocChan,
-	// 	Fn:      tokenize.Tokenize,
-	// }
-	// tokenizeStage.Run(context.Background(), &sync.WaitGroup{})
 
 	// embeddedDocChan := make(chan embed.EmbeddedDoc)
 	// embedder := embed.NewEmbedder(1024)

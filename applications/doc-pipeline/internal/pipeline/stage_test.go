@@ -2,8 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"testing"
 	"time"
 )
@@ -11,20 +9,18 @@ import (
 func TestStage_BasicProcessing(t *testing.T) {
 	ctx := context.Background()
 	in := make(chan int, 10)
-	out := make(chan int, 10)
 
-	stage := &Stage[int, int]{
-		Name:    "multiply",
-		Workers: 1,
-		In:      in,
-		Out:     out,
-		Fn: func(in int) (int, error) {
+	stage := NewStage(
+		"multiply",
+		1,
+		10,
+		in,
+		func(in int) (int, error) {
 			return in * 2, nil
 		},
-	}
+	)
 
-	var wg sync.WaitGroup
-	stage.Run(ctx, &wg)
+	out := stage.Run(ctx)
 
 	testInputs := []int{1, 2, 3, 4, 5}
 	for _, v := range testInputs {
@@ -52,9 +48,6 @@ func TestStage_BasicProcessing(t *testing.T) {
 		t.Fatal("timeout waiting for results")
 	}
 
-	wg.Wait()
-	close(out)
-
 	expected := []int{2, 4, 6, 8, 10}
 	if len(results) != len(expected) {
 		t.Fatalf("expected %d results, got %d", len(expected), len(results))
@@ -75,22 +68,20 @@ func TestStage_BasicProcessing(t *testing.T) {
 func TestStage_MultipleWorkers(t *testing.T) {
 	ctx := context.Background()
 	in := make(chan int, 20)
-	out := make(chan int, 20)
 
-	stage := &Stage[int, int]{
-		Name:    "multiply",
-		Workers: 3,
-		In:      in,
-		Out:     out,
-		Fn: func(in int) (int, error) {
+	stage := NewStage(
+		"multiply",
+		3,
+		20,
+		in,
+		func(in int) (int, error) {
 			// Simulate some work
 			time.Sleep(10 * time.Millisecond)
 			return in * 2, nil
 		},
-	}
+	)
 
-	var wg sync.WaitGroup
-	stage.Run(ctx, &wg)
+	out := stage.Run(ctx)
 
 	testInputs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	for _, v := range testInputs {
@@ -118,9 +109,6 @@ func TestStage_MultipleWorkers(t *testing.T) {
 		t.Fatal("timeout waiting for results")
 	}
 
-	wg.Wait()
-	close(out)
-
 	if len(results) != len(testInputs) {
 		t.Fatalf("expected %d results, got %d", len(testInputs), len(results))
 	}
@@ -141,65 +129,54 @@ func TestStage_MultipleWorkers(t *testing.T) {
 func TestStage_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	in := make(chan int, 10)
-	out := make(chan int, 10)
+	defer close(in)
 
-	stage := &Stage[int, int]{
-		Name:    "slow",
-		Workers: 2,
-		In:      in,
-		Out:     out,
-		Fn: func(in int) (int, error) {
+	stage := NewStage(
+		"slow",
+		2,
+		20,
+		in,
+		func(in int) (int, error) {
 			time.Sleep(100 * time.Millisecond)
 			return in * 2, nil
 		},
-	}
+	)
 
-	var wg sync.WaitGroup
-	stage.Run(ctx, &wg)
+	out := stage.Run(ctx)
 
 	in <- 1
 	in <- 2
 
 	cancel() // cancel immediately
 
-	done := make(chan bool)
-	go func() {
-		wg.Wait()
-		done <- true
-	}()
-
 	select {
-	case <-done:
-		// Workers stopped successfully
+	case <-out:
+		// Worker received a value
 	case <-time.After(1 * time.Second):
-		t.Fatal("timeout waiting for workers to stop")
+		t.Fatal("timeout waiting for worker to receive a value")
 	}
-
-	close(in)
 }
 
 func TestStage_ErrorHandling(t *testing.T) {
 	ctx := context.Background()
 	in := make(chan int, 10)
-	out := make(chan int, 10)
 
 	callCount := 0
-	stage := &Stage[int, int]{
-		Name:    "error-handling",
-		Workers: 1,
-		In:      in,
-		Out:     out,
-		Fn: func(in int) (int, error) {
+	stage := NewStage(
+		"error-handling",
+		1,
+		20,
+		in,
+		func(in int) (int, error) {
 			callCount++
 			if in%2 == 0 {
-				return 0, fmt.Errorf("even number error")
+				return 0, &testError{msg: "even number error"}
 			}
 			return in * 2, nil
 		},
-	}
+	)
 
-	var wg sync.WaitGroup
-	stage.Run(ctx, &wg)
+	out := stage.Run(ctx)
 
 	testInputs := []int{1, 2, 3, 4, 5}
 	for _, v := range testInputs {
@@ -215,9 +192,6 @@ func TestStage_ErrorHandling(t *testing.T) {
 		}
 		done <- true
 	}()
-
-	wg.Wait()
-	close(out)
 
 	select {
 	case <-done:
@@ -245,27 +219,23 @@ func TestStage_ErrorHandling(t *testing.T) {
 	if callCount != len(testInputs) {
 		t.Errorf("expected function to be called %d times, got %d", len(testInputs), callCount)
 	}
-
-	wg.Wait()
 }
 
 func TestStage_ChannelClosure(t *testing.T) {
 	ctx := context.Background()
 	in := make(chan int, 10)
-	out := make(chan int, 10)
 
-	stage := &Stage[int, int]{
-		Name:    "closure",
-		Workers: 2,
-		In:      in,
-		Out:     out,
-		Fn: func(in int) (int, error) {
+	stage := NewStage(
+		"closure",
+		2,
+		20,
+		in,
+		func(in int) (int, error) {
 			return in * 2, nil
 		},
-	}
+	)
 
-	var wg sync.WaitGroup
-	stage.Run(ctx, &wg)
+	out := stage.Run(ctx)
 
 	in <- 1
 	in <- 2
@@ -279,9 +249,6 @@ func TestStage_ChannelClosure(t *testing.T) {
 		}
 		done <- true
 	}()
-
-	wg.Wait()
-	close(out)
 
 	select {
 	case <-done:
