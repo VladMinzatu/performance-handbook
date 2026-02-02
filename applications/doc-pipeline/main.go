@@ -3,16 +3,26 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/index"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/ingest"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/load"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/pipeline"
+	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/telemetry"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/tokenize"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
+	_, err := telemetry.InitMetrics()
+	if err != nil {
+		log.Fatal(err)
+	}
+	http.Handle("/metrics", promhttp.Handler())
+
 	generatorConfig := load.LoadGeneratorConfig{
 		MinTextSize: 1_000,
 		MaxTextSize: 20_000,
