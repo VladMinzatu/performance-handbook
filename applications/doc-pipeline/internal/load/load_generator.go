@@ -11,6 +11,10 @@ import (
 
 const DefaultBufferSize = 100
 
+type LoadGeneratorMetrics interface {
+	IncDataLoadingRequests(n int64)
+}
+
 type LoadGeneratorConfig struct {
 	MinTextSize int    // e.g. 1_000
 	MaxTextSize int    // e.g. 20_000
@@ -25,9 +29,10 @@ type LoadGenerator struct {
 	bufferSize int
 	counter    int
 	rng        *rand.Rand
+	metrics    LoadGeneratorMetrics
 }
 
-func NewLoadGenerator(config LoadGeneratorConfig, bufferSize int) *LoadGenerator {
+func NewLoadGenerator(config LoadGeneratorConfig, bufferSize int, metrics LoadGeneratorMetrics) *LoadGenerator {
 	if bufferSize <= 0 {
 		bufferSize = DefaultBufferSize
 	}
@@ -37,6 +42,7 @@ func NewLoadGenerator(config LoadGeneratorConfig, bufferSize int) *LoadGenerator
 		bufferSize: bufferSize,
 		counter:    0,
 		rng:        rand.New(rand.NewSource(time.Now().UnixNano())),
+		metrics:    metrics,
 	}
 }
 
@@ -55,6 +61,7 @@ func (l *LoadGenerator) Run(ctx context.Context) <-chan ingest.DataLoadingConfig
 				return
 			case <-ticker.C:
 				out <- generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
+				l.metrics.IncDataLoadingRequests(1)
 				l.counter++
 			}
 		}

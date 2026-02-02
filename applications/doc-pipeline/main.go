@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	err := telemetry.InitMetrics()
+	telemetryMetrics, err := telemetry.InitMetrics()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func main() {
 		FilePath:    "data/shakespeare.txt",
 		FileSize:    5436475,
 	}
-	generator := load.NewLoadGenerator(generatorConfig, 100)
+	generator := load.NewLoadGenerator(generatorConfig, 100, telemetryMetrics)
 	dataLoadingChan := generator.Run(context.Background())
 	ctx := context.Background()
 

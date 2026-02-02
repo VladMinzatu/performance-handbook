@@ -10,6 +10,14 @@ import (
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/ingest"
 )
 
+type TestLoadGeneratorMetrics struct {
+	numDocuments int64
+}
+
+func (t *TestLoadGeneratorMetrics) IncDataLoadingRequests(n int64) {
+	t.numDocuments += n
+}
+
 func TestGenerateRandomDataLoadingRequest_BoundsRespected(t *testing.T) {
 	config := LoadGeneratorConfig{
 		MinTextSize: 1000,
@@ -153,8 +161,8 @@ func TestLoadGenerator_RunEmitsRequests(t *testing.T) {
 		FilePath:    "file.txt",
 		FileSize:    10_000,
 	}
-
-	gen := NewLoadGenerator(config, 100)
+	metrics := &TestLoadGeneratorMetrics{}
+	gen := NewLoadGenerator(config, 100, metrics)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -174,6 +182,10 @@ func TestLoadGenerator_RunEmitsRequests(t *testing.T) {
 		case <-timeout:
 			t.Fatalf("Timed out waiting for generator output")
 		}
+	}
+
+	if metrics.numDocuments != int64(len(results)) {
+		t.Fatalf("Expected %d data loading requests, got %d", len(results), metrics.numDocuments)
 	}
 
 	for i, req := range results {
