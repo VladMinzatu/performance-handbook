@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 )
 
@@ -13,7 +14,7 @@ type Stage[I any, O any] struct {
 	BufferSize int
 
 	in <-chan I
-	fn func(I) (O, error) // TODO: could add context.Context as a parameter, but is it necessary or worth it?
+	fn func(I) (O, error)
 }
 
 func NewStage[I any, O any](
@@ -23,6 +24,8 @@ func NewStage[I any, O any](
 	in <-chan I,
 	fn func(I) (O, error),
 ) *Stage[I, O] {
+	slog.Info("creating stage", "name", name, "workers", workers, "bufferSize", bufferSize)
+
 	if workers <= 0 {
 		workers = 1
 	}
@@ -41,6 +44,7 @@ func NewStage[I any, O any](
 
 func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 	out := make(chan O, s.BufferSize)
+	slog.Info("starting stage run", "name", s.Name, "workers", s.Workers, "bufferSize", s.BufferSize)
 
 	var wg sync.WaitGroup
 	wg.Add(s.Workers)
@@ -52,16 +56,18 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 			for {
 				select {
 				case <-ctx.Done():
+					slog.Info("stage run cancelled (context done)", "name", s.Name, "workerID", workerID)
 					return
 
 				case in, ok := <-s.in:
 					if !ok {
+						slog.Info("stage run completed (input channel closed)", "name", s.Name, "workerID", workerID)
 						return
 					}
 
 					outVal, err := s.fn(in)
 					if err != nil {
-						// TODO: record error
+						slog.Error("error in stage - skipping", "stage", s.Name, "input", in, "error", err)
 						continue
 					}
 
@@ -69,6 +75,7 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 					case out <- outVal:
 						// TODO: record latency metric
 					case <-ctx.Done():
+						slog.Info("stage run cancelled (context done)", "name", s.Name, "workerID", workerID)
 						return
 					}
 				}
