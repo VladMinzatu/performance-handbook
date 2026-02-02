@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	_, err := telemetry.InitMetrics()
+	err := telemetry.InitMetrics()
 	if err != nil {
 		log.Fatal(err)
 	}
