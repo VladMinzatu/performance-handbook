@@ -12,7 +12,8 @@ import (
 const DefaultBufferSize = 100
 
 type LoadGeneratorMetrics interface {
-	IncDataLoadingRequests(n int64)
+	IncDataLoadingRequests(ctx context.Context, n int64)
+	RecordDataLoadingRequestTextSize(ctx context.Context, textSize int64)
 }
 
 type LoadGeneratorConfig struct {
@@ -60,8 +61,11 @@ func (l *LoadGenerator) Run(ctx context.Context) <-chan ingest.DataLoadingConfig
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				out <- generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
-				l.metrics.IncDataLoadingRequests(1)
+				req := generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
+				l.metrics.IncDataLoadingRequests(ctx, 1)
+				l.metrics.RecordDataLoadingRequestTextSize(ctx, int64(req.TextSize))
+
+				out <- req
 				l.counter++
 			}
 		}

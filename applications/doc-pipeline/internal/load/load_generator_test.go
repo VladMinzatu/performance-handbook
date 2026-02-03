@@ -11,11 +11,16 @@ import (
 )
 
 type TestLoadGeneratorMetrics struct {
-	numDocuments int64
+	numDocuments      int64
+	recordedTextSizes []int64
 }
 
-func (t *TestLoadGeneratorMetrics) IncDataLoadingRequests(n int64) {
+func (t *TestLoadGeneratorMetrics) IncDataLoadingRequests(ctx context.Context, n int64) {
 	t.numDocuments += n
+}
+
+func (t *TestLoadGeneratorMetrics) RecordDataLoadingRequestTextSize(ctx context.Context, textSize int64) {
+	t.recordedTextSizes = append(t.recordedTextSizes, textSize)
 }
 
 func TestGenerateRandomDataLoadingRequest_BoundsRespected(t *testing.T) {
@@ -186,6 +191,12 @@ func TestLoadGenerator_RunEmitsRequests(t *testing.T) {
 
 	if metrics.numDocuments != int64(len(results)) {
 		t.Fatalf("Expected %d data loading requests, got %d", len(results), metrics.numDocuments)
+	}
+
+	for i, textSize := range metrics.recordedTextSizes {
+		if textSize != int64(results[i].TextSize) {
+			t.Fatalf("Expected text size %d, got %d", results[i].TextSize, textSize)
+		}
 	}
 
 	for i, req := range results {

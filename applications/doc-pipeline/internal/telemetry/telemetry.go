@@ -10,11 +10,17 @@ import (
 )
 
 type TelemetryMetrics struct {
+	// Load Generator metrics
 	numDocumentsCounter metric.Int64Counter
+	textSizeHistogram   metric.Int64Histogram
 }
 
-func (t *TelemetryMetrics) IncDataLoadingRequests(n int64) {
-	t.numDocumentsCounter.Add(context.Background(), n)
+func (t *TelemetryMetrics) IncDataLoadingRequests(ctx context.Context, n int64) {
+	t.numDocumentsCounter.Add(ctx, n)
+}
+
+func (t *TelemetryMetrics) RecordDataLoadingRequestTextSize(ctx context.Context, size int64) {
+	t.textSizeHistogram.Record(ctx, int64(size))
 }
 
 func InitMetrics() (*TelemetryMetrics, error) {
@@ -34,7 +40,15 @@ func InitMetrics() (*TelemetryMetrics, error) {
 		return nil, err
 	}
 
+	textSizeHistogram, err := meter.Int64Histogram("text_size",
+		metric.WithDescription("Histogram of text sizes requested"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &TelemetryMetrics{
 		numDocumentsCounter: numDocumentsCounter,
+		textSizeHistogram:   textSizeHistogram,
 	}, nil
 }
