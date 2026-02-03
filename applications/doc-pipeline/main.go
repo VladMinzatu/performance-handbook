@@ -41,6 +41,7 @@ func main() {
 		100,
 		dataLoadingChan,
 		ingest.LoadData,
+		telemetryMetrics,
 	)
 	tokenizeStage := pipeline.NewStage(
 		"tokenize",
@@ -48,6 +49,7 @@ func main() {
 		100,
 		dataLoadingStage.Run(ctx),
 		tokenize.Tokenize,
+		telemetryMetrics,
 	)
 
 	embedder := embed.NewEmbedder(1024)
@@ -57,6 +59,7 @@ func main() {
 		100,
 		tokenizeStage.Run(ctx),
 		embedder.Embed,
+		telemetryMetrics,
 	)
 
 	indexer := index.NewEmbeddingIndex(0.8)
@@ -66,6 +69,7 @@ func main() {
 		100,
 		embedDocStage.Run(ctx),
 		indexer.DedupAndIndex,
+		telemetryMetrics,
 	)
 
 	out := indexStage.Run(ctx)

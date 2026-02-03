@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/prometheus"
@@ -13,6 +14,9 @@ type TelemetryMetrics struct {
 	// Load Generator metrics
 	numDocumentsCounter metric.Int64Counter
 	textSizeHistogram   metric.Int64Histogram
+
+	// Stage metrics
+	processingLatencyHistogram metric.Int64Histogram
 }
 
 func (t *TelemetryMetrics) IncDataLoadingRequests(ctx context.Context, n int64) {
@@ -21,6 +25,10 @@ func (t *TelemetryMetrics) IncDataLoadingRequests(ctx context.Context, n int64) 
 
 func (t *TelemetryMetrics) RecordDataLoadingRequestTextSize(ctx context.Context, size int64) {
 	t.textSizeHistogram.Record(ctx, int64(size))
+}
+
+func (t *TelemetryMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration) {
+	t.processingLatencyHistogram.Record(ctx, latency.Milliseconds())
 }
 
 func InitMetrics() (*TelemetryMetrics, error) {
@@ -47,8 +55,16 @@ func InitMetrics() (*TelemetryMetrics, error) {
 		return nil, err
 	}
 
+	processingLatencyHistogram, err := meter.Int64Histogram("processing_latency",
+		metric.WithDescription("Histogram of processing latencies"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &TelemetryMetrics{
-		numDocumentsCounter: numDocumentsCounter,
-		textSizeHistogram:   textSizeHistogram,
+		numDocumentsCounter:        numDocumentsCounter,
+		textSizeHistogram:          textSizeHistogram,
+		processingLatencyHistogram: processingLatencyHistogram,
 	}, nil
 }

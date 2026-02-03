@@ -4,9 +4,14 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 )
 
 const DefaultBufferSize = 100
+
+type StageMetrics interface {
+	RecordProcessingLatency(ctx context.Context, latency time.Duration) // TODO: add stage name as a label
+}
 
 type Stage[I any, O any] struct {
 	Name       string
@@ -15,6 +20,8 @@ type Stage[I any, O any] struct {
 
 	in <-chan I
 	fn func(I) (O, error)
+
+	metrics StageMetrics
 }
 
 func NewStage[I any, O any](
@@ -23,6 +30,7 @@ func NewStage[I any, O any](
 	bufferSize int,
 	in <-chan I,
 	fn func(I) (O, error),
+	metrics StageMetrics,
 ) *Stage[I, O] {
 	slog.Info("creating stage", "name", name, "workers", workers, "bufferSize", bufferSize)
 
@@ -39,6 +47,7 @@ func NewStage[I any, O any](
 		BufferSize: bufferSize,
 		in:         in,
 		fn:         fn,
+		metrics:    metrics,
 	}
 }
 
@@ -65,6 +74,7 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 						return
 					}
 
+					startTime := time.Now()
 					outVal, err := s.fn(in)
 					if err != nil {
 						slog.Error("error in stage - skipping", "stage", s.Name, "input", in, "error", err)
@@ -73,7 +83,7 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 
 					select {
 					case out <- outVal:
-						// TODO: record latency metric
+						s.metrics.RecordProcessingLatency(ctx, time.Since(startTime))
 					case <-ctx.Done():
 						slog.Info("stage run cancelled (context done)", "name", s.Name, "workerID", workerID)
 						return

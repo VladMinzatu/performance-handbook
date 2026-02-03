@@ -6,7 +6,16 @@ import (
 	"time"
 )
 
+type TestStageMetrics struct {
+	recordedLatencies []time.Duration
+}
+
+func (t *TestStageMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration) {
+	t.recordedLatencies = append(t.recordedLatencies, latency)
+}
+
 func TestStage_BasicProcessing(t *testing.T) {
+	metrics := &TestStageMetrics{}
 	ctx := context.Background()
 	in := make(chan int, 10)
 
@@ -18,6 +27,7 @@ func TestStage_BasicProcessing(t *testing.T) {
 		func(in int) (int, error) {
 			return in * 2, nil
 		},
+		metrics,
 	)
 
 	out := stage.Run(ctx)
@@ -52,6 +62,9 @@ func TestStage_BasicProcessing(t *testing.T) {
 	if len(results) != len(expected) {
 		t.Fatalf("expected %d results, got %d", len(expected), len(results))
 	}
+	if len(metrics.recordedLatencies) != len(testInputs) {
+		t.Errorf("expected %d latencies, got %d", len(testInputs), len(metrics.recordedLatencies))
+	}
 
 	resultMap := make(map[int]int)
 	for _, r := range results {
@@ -68,6 +81,7 @@ func TestStage_BasicProcessing(t *testing.T) {
 func TestStage_MultipleWorkers(t *testing.T) {
 	ctx := context.Background()
 	in := make(chan int, 20)
+	metrics := &TestStageMetrics{}
 
 	stage := NewStage(
 		"multiply",
@@ -79,6 +93,7 @@ func TestStage_MultipleWorkers(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 			return in * 2, nil
 		},
+		metrics,
 	)
 
 	out := stage.Run(ctx)
@@ -113,6 +128,10 @@ func TestStage_MultipleWorkers(t *testing.T) {
 		t.Fatalf("expected %d results, got %d", len(testInputs), len(results))
 	}
 
+	if len(metrics.recordedLatencies) != len(testInputs) {
+		t.Errorf("expected %d latencies, got %d", len(testInputs), len(metrics.recordedLatencies))
+	}
+
 	resultMap := make(map[int]int)
 	for _, r := range results {
 		resultMap[r]++
@@ -131,6 +150,7 @@ func TestStage_ContextCancellation(t *testing.T) {
 	in := make(chan int, 10)
 	defer close(in)
 
+	metrics := &TestStageMetrics{}
 	stage := NewStage(
 		"slow",
 		2,
@@ -140,6 +160,7 @@ func TestStage_ContextCancellation(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 			return in * 2, nil
 		},
+		metrics,
 	)
 
 	out := stage.Run(ctx)
@@ -155,11 +176,15 @@ func TestStage_ContextCancellation(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("timeout waiting for worker to receive a value")
 	}
+	if len(metrics.recordedLatencies) != 0 {
+		t.Errorf("expected %d latencies, got %d", 0, len(metrics.recordedLatencies))
+	}
 }
 
 func TestStage_ErrorHandling(t *testing.T) {
 	ctx := context.Background()
 	in := make(chan int, 10)
+	metrics := &TestStageMetrics{}
 
 	callCount := 0
 	stage := NewStage(
@@ -174,6 +199,7 @@ func TestStage_ErrorHandling(t *testing.T) {
 			}
 			return in * 2, nil
 		},
+		metrics,
 	)
 
 	out := stage.Run(ctx)
@@ -205,6 +231,10 @@ func TestStage_ErrorHandling(t *testing.T) {
 		t.Fatalf("expected %d results, got %d", len(expectedResults), len(results))
 	}
 
+	if len(metrics.recordedLatencies) != len(expectedResults) {
+		t.Errorf("expected %d latencies, got %d", len(testInputs), len(metrics.recordedLatencies))
+	}
+
 	resultMap := make(map[int]int)
 	for _, r := range results {
 		resultMap[r]++
@@ -225,6 +255,7 @@ func TestStage_ChannelClosure(t *testing.T) {
 	ctx := context.Background()
 	in := make(chan int, 10)
 
+	metrics := &TestStageMetrics{}
 	stage := NewStage(
 		"closure",
 		2,
@@ -233,6 +264,7 @@ func TestStage_ChannelClosure(t *testing.T) {
 		func(in int) (int, error) {
 			return in * 2, nil
 		},
+		metrics,
 	)
 
 	out := stage.Run(ctx)
@@ -259,6 +291,9 @@ func TestStage_ChannelClosure(t *testing.T) {
 
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	if len(metrics.recordedLatencies) != 2 {
+		t.Errorf("expected %d latencies, got %d", 2, len(metrics.recordedLatencies))
 	}
 }
 
