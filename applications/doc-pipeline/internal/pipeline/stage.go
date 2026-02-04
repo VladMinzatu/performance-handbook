@@ -10,7 +10,7 @@ import (
 const DefaultBufferSize = 100
 
 type StageMetrics interface {
-	RecordProcessingLatency(ctx context.Context, latency time.Duration) // TODO: add stage name as a label
+	RecordProcessingLatency(ctx context.Context, latency time.Duration, stageName string)
 }
 
 type Stage[I any, O any] struct {
@@ -83,7 +83,7 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 
 					select {
 					case out <- outVal:
-						s.metrics.RecordProcessingLatency(ctx, time.Since(startTime))
+						s.metrics.RecordProcessingLatency(ctx, time.Since(startTime), s.Name)
 					case <-ctx.Done():
 						slog.Info("stage run cancelled (context done)", "name", s.Name, "workerID", workerID)
 						return

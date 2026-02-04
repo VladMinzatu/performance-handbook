@@ -2,15 +2,19 @@ package pipeline
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 )
 
 type TestStageMetrics struct {
 	recordedLatencies []time.Duration
+	lock              sync.Mutex
 }
 
-func (t *TestStageMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration) {
+func (t *TestStageMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration, stageName string) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
 	t.recordedLatencies = append(t.recordedLatencies, latency)
 }
 

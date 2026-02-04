@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -27,8 +28,8 @@ func (t *TelemetryMetrics) RecordDataLoadingRequestTextSize(ctx context.Context,
 	t.textSizeHistogram.Record(ctx, int64(size))
 }
 
-func (t *TelemetryMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration) {
-	t.processingLatencyHistogram.Record(ctx, latency.Milliseconds())
+func (t *TelemetryMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration, stageName string) {
+	t.processingLatencyHistogram.Record(ctx, latency.Milliseconds(), metric.WithAttributes(attribute.String("stage_name", stageName)))
 }
 
 func InitMetrics() (*TelemetryMetrics, error) {
