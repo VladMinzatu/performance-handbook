@@ -8,14 +8,29 @@ import (
 )
 
 type TestStageMetrics struct {
-	recordedLatencies []time.Duration
-	lock              sync.Mutex
+	recordedLatencies        []time.Duration
+	stageTotalProcessedItems int64
+	stageErrors              int64
+
+	lock sync.Mutex
 }
 
 func (t *TestStageMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration, stageName string) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.recordedLatencies = append(t.recordedLatencies, latency)
+}
+
+func (t *TestStageMetrics) IncStageTotalProcessedItems(ctx context.Context, stageName string) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.stageTotalProcessedItems++
+}
+
+func (t *TestStageMetrics) IncStageErrors(ctx context.Context, stageName string) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.stageErrors++
 }
 
 func TestStage_BasicProcessing(t *testing.T) {
@@ -68,6 +83,12 @@ func TestStage_BasicProcessing(t *testing.T) {
 	}
 	if len(metrics.recordedLatencies) != len(testInputs) {
 		t.Errorf("expected %d latencies, got %d", len(testInputs), len(metrics.recordedLatencies))
+	}
+	if metrics.stageTotalProcessedItems != int64(len(testInputs)) {
+		t.Errorf("expected %d stage total processed items, got %d", len(testInputs), metrics.stageTotalProcessedItems)
+	}
+	if metrics.stageErrors != 0 {
+		t.Errorf("expected %d stage errors, got %d", 0, metrics.stageErrors)
 	}
 
 	resultMap := make(map[int]int)
@@ -135,6 +156,12 @@ func TestStage_MultipleWorkers(t *testing.T) {
 	if len(metrics.recordedLatencies) != len(testInputs) {
 		t.Errorf("expected %d latencies, got %d", len(testInputs), len(metrics.recordedLatencies))
 	}
+	if metrics.stageTotalProcessedItems != int64(len(testInputs)) {
+		t.Errorf("expected %d stage total processed items, got %d", len(testInputs), metrics.stageTotalProcessedItems)
+	}
+	if metrics.stageErrors != 0 {
+		t.Errorf("expected %d stage errors, got %d", 0, metrics.stageErrors)
+	}
 
 	resultMap := make(map[int]int)
 	for _, r := range results {
@@ -182,6 +209,12 @@ func TestStage_ContextCancellation(t *testing.T) {
 	}
 	if len(metrics.recordedLatencies) != 0 {
 		t.Errorf("expected %d latencies, got %d", 0, len(metrics.recordedLatencies))
+	}
+	if metrics.stageTotalProcessedItems != 0 {
+		t.Errorf("expected %d stage total processed items, got %d", 0, metrics.stageTotalProcessedItems)
+	}
+	if metrics.stageErrors != 0 {
+		t.Errorf("expected %d stage errors, got %d", 0, metrics.stageErrors)
 	}
 }
 
@@ -237,6 +270,12 @@ func TestStage_ErrorHandling(t *testing.T) {
 
 	if len(metrics.recordedLatencies) != len(expectedResults) {
 		t.Errorf("expected %d latencies, got %d", len(testInputs), len(metrics.recordedLatencies))
+	}
+	if metrics.stageTotalProcessedItems != int64(len(testInputs)) {
+		t.Errorf("expected %d stage total processed items, got %d", len(testInputs), metrics.stageTotalProcessedItems)
+	}
+	if metrics.stageErrors != 2 {
+		t.Errorf("expected %d stage errors, got %d", 2, metrics.stageErrors)
 	}
 
 	resultMap := make(map[int]int)
@@ -298,6 +337,12 @@ func TestStage_ChannelClosure(t *testing.T) {
 	}
 	if len(metrics.recordedLatencies) != 2 {
 		t.Errorf("expected %d latencies, got %d", 2, len(metrics.recordedLatencies))
+	}
+	if metrics.stageTotalProcessedItems != 2 {
+		t.Errorf("expected %d stage total processed items, got %d", 2, metrics.stageTotalProcessedItems)
+	}
+	if metrics.stageErrors != 0 {
+		t.Errorf("expected %d stage errors, got %d", 0, metrics.stageErrors)
 	}
 }
 

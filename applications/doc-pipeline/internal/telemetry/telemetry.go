@@ -17,7 +17,9 @@ type TelemetryMetrics struct {
 	textSizeHistogram   metric.Int64Histogram
 
 	// Stage metrics
-	processingLatencyHistogram metric.Int64Histogram
+	processingLatencyHistogram      metric.Int64Histogram
+	stageTotalProcessedItemsCounter metric.Int64Counter
+	stageErrorsCounter              metric.Int64Counter
 }
 
 func (t *TelemetryMetrics) IncDataLoadingRequests(ctx context.Context, n int64) {
@@ -30,6 +32,14 @@ func (t *TelemetryMetrics) RecordDataLoadingRequestTextSize(ctx context.Context,
 
 func (t *TelemetryMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration, stageName string) {
 	t.processingLatencyHistogram.Record(ctx, latency.Milliseconds(), metric.WithAttributes(attribute.String("stage_name", stageName)))
+}
+
+func (t *TelemetryMetrics) IncStageTotalProcessedItems(ctx context.Context, stageName string) {
+	t.stageTotalProcessedItemsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("stage_name", stageName)))
+}
+
+func (t *TelemetryMetrics) IncStageErrors(ctx context.Context, stageName string) {
+	t.stageErrorsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("stage_name", stageName)))
 }
 
 func InitMetrics() (*TelemetryMetrics, error) {

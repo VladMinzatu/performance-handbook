@@ -11,6 +11,8 @@ const DefaultBufferSize = 100
 
 type StageMetrics interface {
 	RecordProcessingLatency(ctx context.Context, latency time.Duration, stageName string)
+	IncStageTotalProcessedItems(ctx context.Context, stageName string)
+	IncStageErrors(ctx context.Context, stageName string)
 }
 
 type Stage[I any, O any] struct {
@@ -74,10 +76,12 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 						return
 					}
 
+					s.metrics.IncStageTotalProcessedItems(ctx, s.Name)
 					startTime := time.Now()
 					outVal, err := s.fn(in)
 					if err != nil {
 						slog.Error("error in stage - skipping", "stage", s.Name, "input", in, "error", err)
+						s.metrics.IncStageErrors(ctx, s.Name)
 						continue
 					}
 
