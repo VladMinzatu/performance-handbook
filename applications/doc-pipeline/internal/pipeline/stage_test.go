@@ -176,6 +176,8 @@ func TestStage_MultipleWorkers(t *testing.T) {
 	}
 }
 
+// TODO: we could tweak this test to be more deterministic if we were checking for ctx.Err() before starting to process the items
+// then we could e.g. check that only one item was processed. But there's probably no need.
 func TestStage_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	in := make(chan int, 10)
