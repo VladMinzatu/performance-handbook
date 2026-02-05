@@ -3,6 +3,7 @@ package load
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -62,6 +63,7 @@ func (l *LoadGenerator) Run(ctx context.Context) <-chan ingest.DataLoadingConfig
 				return
 			case <-ticker.C:
 				req := generateRandomDataLoadingRequest(l.config, l.counter, l.rng)
+				slog.Debug("generated random data loading request", "request", req)
 				l.metrics.IncDataLoadingRequests(ctx, 1)
 				l.metrics.RecordDataLoadingRequestTextSize(ctx, int64(req.TextSize))
 

@@ -77,6 +77,7 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 					}
 
 					s.metrics.IncStageTotalProcessedItems(ctx, s.Name)
+					slog.Debug("processing item", "stage_name", s.Name, "input", in, "workerID", workerID)
 					startTime := time.Now()
 					outVal, err := s.fn(in)
 					if err != nil {
@@ -87,7 +88,9 @@ func (s *Stage[I, O]) Run(ctx context.Context) <-chan O {
 
 					select {
 					case out <- outVal:
-						s.metrics.RecordProcessingLatency(ctx, time.Since(startTime), s.Name)
+						latency := time.Since(startTime)
+						slog.Debug("processed item", "stage_name", s.Name, "input", in, "workerID", workerID, "latency", latency)
+						s.metrics.RecordProcessingLatency(ctx, latency, s.Name)
 					case <-ctx.Done():
 						slog.Info("stage run cancelled (context done)", "name", s.Name, "workerID", workerID)
 						return
