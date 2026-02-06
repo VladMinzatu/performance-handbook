@@ -73,9 +73,25 @@ func InitMetrics() (*TelemetryMetrics, error) {
 		return nil, err
 	}
 
+	stageTotalProcessedItemsCounter, err := meter.Int64Counter("stage_total_processed_items",
+		metric.WithDescription("Number of total items processed by stage"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	stageErrorsCounter, err := meter.Int64Counter("stage_errors",
+		metric.WithDescription("Number of errors encountered by stage"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &TelemetryMetrics{
-		numDocumentsCounter:        numDocumentsCounter,
-		textSizeHistogram:          textSizeHistogram,
-		processingLatencyHistogram: processingLatencyHistogram,
+		numDocumentsCounter:             numDocumentsCounter,
+		textSizeHistogram:               textSizeHistogram,
+		processingLatencyHistogram:      processingLatencyHistogram,
+		stageTotalProcessedItemsCounter: stageTotalProcessedItemsCounter,
+		stageErrorsCounter:              stageErrorsCounter,
 	}, nil
 }
