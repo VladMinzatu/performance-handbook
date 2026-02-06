@@ -16,10 +16,17 @@ type TelemetryMetrics struct {
 	numDocumentsCounter metric.Int64Counter
 	textSizeHistogram   metric.Int64Histogram
 
-	// Stage metrics
+	// Generic stage metrics
 	processingLatencyHistogram      metric.Int64Histogram
 	stageTotalProcessedItemsCounter metric.Int64Counter
 	stageErrorsCounter              metric.Int64Counter
+
+	// Stage-specific metrics
+
+	// Indexing and deduplication metrics
+	deduplicationThreshold             metric.Float64Gauge
+	totalProcessedDocumentsForIndexing metric.Int64Counter
+	totalDuplicateDocuments            metric.Int64Counter
 }
 
 func (t *TelemetryMetrics) IncDataLoadingRequests(ctx context.Context, n int64) {
@@ -40,6 +47,18 @@ func (t *TelemetryMetrics) IncStageTotalProcessedItems(ctx context.Context, stag
 
 func (t *TelemetryMetrics) IncStageErrors(ctx context.Context, stageName string) {
 	t.stageErrorsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("stage_name", stageName)))
+}
+
+func (t *TelemetryMetrics) SetDeduplicationThreshold(ctx context.Context, threshold float64) {
+	t.deduplicationThreshold.Record(ctx, threshold)
+}
+
+func (t *TelemetryMetrics) IncTotalProcessedDocumentsForIndexing(ctx context.Context) {
+	t.totalProcessedDocumentsForIndexing.Add(ctx, 1)
+}
+
+func (t *TelemetryMetrics) IncTotalDuplicateDocuments(ctx context.Context) {
+	t.totalDuplicateDocuments.Add(ctx, 1)
 }
 
 func InitMetrics() (*TelemetryMetrics, error) {
@@ -87,11 +106,35 @@ func InitMetrics() (*TelemetryMetrics, error) {
 		return nil, err
 	}
 
+	deduplicationThreshold, err := meter.Float64Gauge("deduplication_threshold",
+		metric.WithDescription("Deduplication threshold"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	totalProcessedDocumentsForIndexing, err := meter.Int64Counter("total_processed_documents_for_indexing",
+		metric.WithDescription("Number of total documents processed for indexing"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	totalDuplicateDocuments, err := meter.Int64Counter("total_duplicate_documents",
+		metric.WithDescription("Number of duplicate documents"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &TelemetryMetrics{
-		numDocumentsCounter:             numDocumentsCounter,
-		textSizeHistogram:               textSizeHistogram,
-		processingLatencyHistogram:      processingLatencyHistogram,
-		stageTotalProcessedItemsCounter: stageTotalProcessedItemsCounter,
-		stageErrorsCounter:              stageErrorsCounter,
+		numDocumentsCounter:                numDocumentsCounter,
+		textSizeHistogram:                  textSizeHistogram,
+		processingLatencyHistogram:         processingLatencyHistogram,
+		stageTotalProcessedItemsCounter:    stageTotalProcessedItemsCounter,
+		stageErrorsCounter:                 stageErrorsCounter,
+		deduplicationThreshold:             deduplicationThreshold,
+		totalProcessedDocumentsForIndexing: totalProcessedDocumentsForIndexing,
+		totalDuplicateDocuments:            totalDuplicateDocuments,
 	}, nil
 }
