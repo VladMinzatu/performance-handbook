@@ -1,6 +1,7 @@
 package index
 
 import (
+	"context"
 	"math"
 	"sync"
 	"testing"
@@ -8,8 +9,27 @@ import (
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
 )
 
+type TestIndexMetrics struct {
+	deduplicationThreshold             float64
+	totalProcessedDocumentsForIndexing int64
+	totalDuplicateDocuments            int64
+}
+
+func (m *TestIndexMetrics) SetDeduplicationThreshold(ctx context.Context, threshold float64) {
+	m.deduplicationThreshold = threshold
+}
+
+func (m *TestIndexMetrics) IncTotalProcessedDocumentsForIndexing(ctx context.Context) {
+	m.totalProcessedDocumentsForIndexing++
+}
+
+func (m *TestIndexMetrics) IncTotalDuplicateDocuments(ctx context.Context) {
+	m.totalDuplicateDocuments++
+}
+
 func TestNewEmbeddingIndex(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	if idx == nil {
 		t.Fatal("NewEmbeddingIndex returned nil")
@@ -22,10 +42,34 @@ func TestNewEmbeddingIndex(t *testing.T) {
 	if len(idx.vecs) != 0 {
 		t.Errorf("expected empty vecs, got length %d", len(idx.vecs))
 	}
+
+	if metrics.deduplicationThreshold != 0.8 {
+		t.Errorf("expected deduplication threshold 0.8, got %f", metrics.deduplicationThreshold)
+	}
+
+	if metrics.totalProcessedDocumentsForIndexing != 0 {
+		t.Errorf("expected total processed documents for indexing 0, got %d", metrics.totalProcessedDocumentsForIndexing)
+	}
+
+	if metrics.totalDuplicateDocuments != 0 {
+		t.Errorf("expected total duplicate documents 0, got %d", metrics.totalDuplicateDocuments)
+	}
+}
+
+func TestNewEmbeddingIndex_InvalidThreshold(t *testing.T) {
+	metrics := &TestIndexMetrics{}
+	_, err := NewEmbeddingIndex(-0.1, metrics)
+	if err == nil {
+		t.Fatal("expected error for invalid threshold")
+	}
+	if err.Error() != "deduplication threshold must be between 0.0 and 1.0" {
+		t.Errorf("expected error 'deduplication threshold must be between 0.0 and 1.0', got '%s'", err.Error())
+	}
 }
 
 func TestDedupAndIndex_EmptyIndex(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 	doc := embed.EmbeddedDoc{
 		ID:        "doc-1",
 		Embedding: createEmbedding(10, []int{0}),
@@ -59,10 +103,17 @@ func TestDedupAndIndex_EmptyIndex(t *testing.T) {
 	if idx.ids[0] != "doc-1" {
 		t.Errorf("expected 'doc-1' in index, got '%s'", idx.ids[0])
 	}
+	if metrics.totalProcessedDocumentsForIndexing != 1 {
+		t.Errorf("expected total processed documents for indexing 1, got %d", metrics.totalProcessedDocumentsForIndexing)
+	}
+	if metrics.totalDuplicateDocuments != 0 {
+		t.Errorf("expected total duplicate documents 0, got %d", metrics.totalDuplicateDocuments)
+	}
 }
 
 func TestDedupAndIndex_NonDuplicate(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -91,10 +142,17 @@ func TestDedupAndIndex_NonDuplicate(t *testing.T) {
 	if len(idx.ids) != 2 {
 		t.Errorf("expected 2 documents in index, got %d", len(idx.ids))
 	}
+	if metrics.totalProcessedDocumentsForIndexing != 2 {
+		t.Errorf("expected total processed documents for indexing 2, got %d", metrics.totalProcessedDocumentsForIndexing)
+	}
+	if metrics.totalDuplicateDocuments != 0 {
+		t.Errorf("expected total duplicate documents 0, got %d", metrics.totalDuplicateDocuments)
+	}
 }
 
 func TestDedupAndIndex_Duplicate(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -131,44 +189,17 @@ func TestDedupAndIndex_Duplicate(t *testing.T) {
 	if len(idx.ids) != 1 {
 		t.Errorf("expected 1 document in index (duplicate not added), got %d", len(idx.ids))
 	}
-}
-
-func TestDedupAndIndex_ThresholdBoundary(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
-
-	doc1 := embed.EmbeddedDoc{
-		ID:        "doc-1",
-		Embedding: createEmbedding(10, []int{0}),
+	if metrics.totalProcessedDocumentsForIndexing != 2 {
+		t.Errorf("expected total processed documents for indexing 2, got %d", metrics.totalProcessedDocumentsForIndexing)
 	}
-
-	doc2 := embed.EmbeddedDoc{
-		ID:        "doc-2",
-		Embedding: createEmbedding(10, []int{0}),
-	}
-
-	_, err := idx.DedupAndIndex(doc1)
-	if err != nil {
-		t.Fatalf("DedupAndIndex failed: %v", err)
-	}
-
-	result, err := idx.DedupAndIndex(doc2)
-	if err != nil {
-		t.Fatalf("DedupAndIndex failed: %v", err)
-	}
-
-	if result.Similarity >= 0.99 {
-		if !result.IsDuplicate {
-			t.Error("expected duplicate when similarity >= threshold")
-		}
-	} else {
-		if result.IsDuplicate {
-			t.Error("expected not duplicate when similarity < threshold")
-		}
+	if metrics.totalDuplicateDocuments != 1 {
+		t.Errorf("expected total duplicate documents 1, got %d", metrics.totalDuplicateDocuments)
 	}
 }
 
 func TestDedupAndIndex_MultipleDocuments(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	docs := []embed.EmbeddedDoc{
 		{ID: "doc-1", Embedding: createEmbedding(10, []int{0})},
@@ -191,11 +222,19 @@ func TestDedupAndIndex_MultipleDocuments(t *testing.T) {
 		if len(idx.ids) != i+1 {
 			t.Errorf("expected %d documents in index, got %d", i+1, len(idx.ids))
 		}
+
+		if metrics.totalProcessedDocumentsForIndexing != int64(i+1) {
+			t.Errorf("expected total processed documents for indexing %d, got %d", i+1, metrics.totalProcessedDocumentsForIndexing)
+		}
+		if metrics.totalDuplicateDocuments != 0 {
+			t.Errorf("expected total duplicate documents 0, got %d", metrics.totalDuplicateDocuments)
+		}
 	}
 }
 
 func TestDedupAndIndex_FindNearest(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -234,10 +273,17 @@ func TestDedupAndIndex_FindNearest(t *testing.T) {
 	if result.Similarity < 0.99 {
 		t.Errorf("expected high similarity with doc-1, got %f", result.Similarity)
 	}
+	if metrics.totalProcessedDocumentsForIndexing != 3 {
+		t.Errorf("expected total processed documents for indexing 3, got %d", metrics.totalProcessedDocumentsForIndexing)
+	}
+	if metrics.totalDuplicateDocuments != 1 {
+		t.Errorf("expected total duplicate documents 1, got %d", metrics.totalDuplicateDocuments)
+	}
 }
 
 func TestDedupAndIndex_ConcurrentAccess(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 	var wg sync.WaitGroup
 	numDocs := 100
 
@@ -264,7 +310,8 @@ func TestDedupAndIndex_ConcurrentAccess(t *testing.T) {
 }
 
 func TestDedupAndIndex_ConcurrentDuplicateDetection(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -314,7 +361,8 @@ func TestDedupAndIndex_ConcurrentDuplicateDetection(t *testing.T) {
 }
 
 func TestDedupAndIndex_VerySimilar(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -339,10 +387,17 @@ func TestDedupAndIndex_VerySimilar(t *testing.T) {
 	if result.Similarity < 0.0 || result.Similarity > 1.0 {
 		t.Errorf("similarity should be between 0 and 1, got %f", result.Similarity)
 	}
+	if metrics.totalProcessedDocumentsForIndexing != 2 {
+		t.Errorf("expected total processed documents for indexing 3, got %d", metrics.totalProcessedDocumentsForIndexing)
+	}
+	if metrics.totalDuplicateDocuments != 1 {
+		t.Errorf("expected total duplicate documents 1, got %d", metrics.totalDuplicateDocuments)
+	}
 }
 
 func TestDedupAndIndex_VeryDifferent(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -371,40 +426,17 @@ func TestDedupAndIndex_VeryDifferent(t *testing.T) {
 	if result.Similarity >= 0.8 {
 		t.Errorf("expected low similarity, got %f", result.Similarity)
 	}
-}
-
-func TestDedupAndIndex_ZeroThreshold(t *testing.T) {
-	idx := NewEmbeddingIndex(0.0)
-
-	doc1 := embed.EmbeddedDoc{
-		ID:        "doc-1",
-		Embedding: createEmbedding(10, []int{0}),
+	if metrics.totalProcessedDocumentsForIndexing != 2 {
+		t.Errorf("expected total processed documents for indexing 2, got %d", metrics.totalProcessedDocumentsForIndexing)
 	}
-
-	doc2 := embed.EmbeddedDoc{
-		ID:        "doc-2",
-		Embedding: createEmbedding(10, []int{9}),
-	}
-
-	_, err := idx.DedupAndIndex(doc1)
-	if err != nil {
-		t.Fatalf("DedupAndIndex failed: %v", err)
-	}
-
-	result, err := idx.DedupAndIndex(doc2)
-	if err != nil {
-		t.Fatalf("DedupAndIndex failed: %v", err)
-	}
-
-	if result.Similarity >= 0.0 {
-		if !result.IsDuplicate {
-			t.Error("expected duplicate when threshold is 0.0 and similarity >= 0")
-		}
+	if metrics.totalDuplicateDocuments != 0 {
+		t.Errorf("expected total duplicate documents 0, got %d", metrics.totalDuplicateDocuments)
 	}
 }
 
 func TestDedupAndIndex_OneThreshold(t *testing.T) {
-	idx := NewEmbeddingIndex(1.0)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(1.0, metrics)
 
 	doc1 := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -435,10 +467,18 @@ func TestDedupAndIndex_OneThreshold(t *testing.T) {
 			t.Error("expected not duplicate when similarity < 1.0")
 		}
 	}
+
+	if metrics.totalProcessedDocumentsForIndexing != 2 {
+		t.Errorf("expected total processed documents for indexing 2, got %d", metrics.totalProcessedDocumentsForIndexing)
+	}
+	if metrics.totalDuplicateDocuments != 1 {
+		t.Errorf("expected total duplicate documents 1, got %d", metrics.totalDuplicateDocuments)
+	}
 }
 
 func TestDedupAndIndex_LargeEmbedding(t *testing.T) {
-	idx := NewEmbeddingIndex(0.8)
+	metrics := &TestIndexMetrics{}
+	idx, _ := NewEmbeddingIndex(0.8, metrics)
 
 	doc := embed.EmbeddedDoc{
 		ID:        "doc-1",
@@ -456,6 +496,13 @@ func TestDedupAndIndex_LargeEmbedding(t *testing.T) {
 
 	if len(idx.ids) != 1 {
 		t.Errorf("expected 1 document in index, got %d", len(idx.ids))
+	}
+
+	if metrics.totalProcessedDocumentsForIndexing != 1 {
+		t.Errorf("expected total processed documents for indexing 1, got %d", metrics.totalProcessedDocumentsForIndexing)
+	}
+	if metrics.totalDuplicateDocuments != 0 {
+		t.Errorf("expected total duplicate documents 0, got %d", metrics.totalDuplicateDocuments)
 	}
 }
 

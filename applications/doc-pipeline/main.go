@@ -62,7 +62,10 @@ func main() {
 		telemetryMetrics,
 	)
 
-	indexer := index.NewEmbeddingIndex(0.8)
+	indexer, err := index.NewEmbeddingIndex(0.8, telemetryMetrics)
+	if err != nil {
+		log.Fatal(err)
+	}
 	indexStage := pipeline.NewStage(
 		"index",
 		10,
