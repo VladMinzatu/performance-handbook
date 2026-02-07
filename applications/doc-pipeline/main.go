@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
@@ -21,7 +22,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	http.Handle("/metrics", promhttp.Handler())
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	go func() {
+		slog.Info("metrics available at :8080/metrics")
+		log.Fatal(http.ListenAndServe(":8080", mux))
+	}()
 
 	generatorConfig := load.LoadGeneratorConfig{
 		MinTextSize: 1_000,
