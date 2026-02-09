@@ -170,7 +170,9 @@ Tracing is not meant to be used in production (except maybe in short bursts) as 
 
 Introduced in Go 1.25, Flight Recorder enables low overhead production (always on safe) tracing that collects execution traces normally, but stores a limited amount of recent (last few seconds of) data in memory, in a ring buffer, instead of writing it out to a socket or file.
 
-It is configured by providing a time window and a maximum size and you dump the snapshot to e.g. a file when a certain production condition is met (e.g. a long running request). When that happens, you can snapshot the current state of the buffer and snapshot the problematic time window. More information can be found [here](https://go.dev/blog/flight-recorder).
+It is configured by providing a time window and a maximum size and you dump the snapshot to e.g. a file when a certain production condition is met (e.g. a long running request). When that happens, you can snapshot the current state of the buffer and snapshot the problematic time window. It is therefore primarily useful for debugging specific, hard-to-reproduce issues by capturing the last few seconds, and it is often used in combination with Continuous Profiling (e.g., pprof + Pyroscope) for general performance tracking.
+
+.More information can be found [here](https://go.dev/blog/flight-recorder).
 
 ## Observability
 
