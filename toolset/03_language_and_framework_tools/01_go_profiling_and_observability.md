@@ -128,7 +128,7 @@ Tracing is the recording of timestamped events. (this is useful at the go applic
 
 Go's scheduler tracer lives in the `runtime/trace` package and is a low-level, highly detailed tracer. (it's separate from pprof)
 
-The built in runtime tracer captures scheduler, GC, contention, syscal etc. events as well as user-defined trace regions and tasks (via `trace.Log`, `trace.WithRegion`, `trace.NewTask`) (see src/runtime/trace.go)
+The built in runtime tracer captures scheduler, GC, contention, syscall etc. events as well as user-defined trace regions and tasks (via `trace.Log`, `trace.WithRegion`, `trace.NewTask`) (see src/runtime/trace.go)
 
 You want to run this to answer questions such as:
 
@@ -165,6 +165,12 @@ defer profile.Start(profile.TraceProfile, profile.Path(".")).Stop()
 Can also be exported to Prometheus as metrics accessible through the metrics endpoint (e.g. https://github.com/MadhavJivrajani/gse - essentially it runs a go program with `GODEBUG=schedtrace=10 <binary>` and then it scans the stderr for "SCHED" and then parses those traces to extract metrics and pushes them to prometheus).
 
 Tracing is not meant to be used in production (except maybe in short bursts) as the overhead it adds is high.
+
+## Flight Recorder 
+
+Introduced in Go 1.25, Flight Recorder enables low overhead production (always on safe) tracing that collects execution traces normally, but stores a limited amount of recent (last few seconds of) data in memory, in a ring buffer, instead of writing it out to a socket or file.
+
+It is configured by providing a time window and a maximum size and you dump the snapshot to e.g. a file when a certain production condition is met (e.g. a long running request). When that happens, you can snapshot the current state of the buffer and snapshot the problematic time window. More information can be found [here](https://go.dev/blog/flight-recorder).
 
 ## Observability
 
