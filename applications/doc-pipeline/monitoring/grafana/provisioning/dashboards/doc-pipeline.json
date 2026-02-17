@@ -124,9 +124,10 @@
           },
           "editorMode": "builder",
           "expr": "sum(rate(num_documents_total[5m]))",
-          "legendFormat": "__auto",
+          "hide": false,
+          "legendFormat": "docs/sec",
           "range": true,
-          "refId": "A"
+          "refId": "docs/sec"
         }
       ],
       "title": "Generated Documents / sec",
@@ -231,7 +232,7 @@
         {
           "editorMode": "builder",
           "expr": "sum(rate(stage_processed_items_total{stage_name=\"load\"}[5m]))",
-          "legendFormat": "__auto",
+          "legendFormat": "total/sec",
           "range": true,
           "refId": "A"
         },
@@ -244,7 +245,7 @@
           "expr": "sum(rate(stage_errors_total{stage_name=\"load\"}[5m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "err/sec",
           "range": true,
           "refId": "B"
         }
@@ -338,7 +339,7 @@
         {
           "editorMode": "builder",
           "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"load\"}[5m])))",
-          "legendFormat": "__auto",
+          "legendFormat": "p99",
           "range": true,
           "refId": "A"
         },
@@ -350,7 +351,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"load\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p95",
           "range": true,
           "refId": "B"
         },
@@ -362,7 +363,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"load\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p50",
           "range": true,
           "refId": "C"
         }
@@ -469,7 +470,7 @@
         {
           "editorMode": "builder",
           "expr": "sum(rate(stage_processed_items_total{stage_name=\"tokenize\"}[5m]))",
-          "legendFormat": "__auto",
+          "legendFormat": "total/sec",
           "range": true,
           "refId": "A"
         },
@@ -482,7 +483,7 @@
           "expr": "sum(rate(stage_errors_total{stage_name=\"tokenize\"}[5m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "err/sec",
           "range": true,
           "refId": "B"
         }
@@ -576,7 +577,7 @@
         {
           "editorMode": "builder",
           "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"tokenize\"}[5m])))",
-          "legendFormat": "__auto",
+          "legendFormat": "p99",
           "range": true,
           "refId": "A"
         },
@@ -588,7 +589,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"tokenize\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p95",
           "range": true,
           "refId": "B"
         },
@@ -600,7 +601,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"tokenize\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p50",
           "range": true,
           "refId": "C"
         }
@@ -707,7 +708,7 @@
         {
           "editorMode": "builder",
           "expr": "sum(rate(stage_processed_items_total{stage_name=\"embed\"}[5m]))",
-          "legendFormat": "__auto",
+          "legendFormat": "total/sec",
           "range": true,
           "refId": "A"
         },
@@ -720,7 +721,7 @@
           "expr": "sum(rate(stage_errors_total{stage_name=\"embed\"}[5m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "err/sec",
           "range": true,
           "refId": "B"
         }
@@ -814,7 +815,7 @@
         {
           "editorMode": "builder",
           "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"embed\"}[5m])))",
-          "legendFormat": "__auto",
+          "legendFormat": "p99",
           "range": true,
           "refId": "A"
         },
@@ -826,7 +827,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"embed\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p95",
           "range": true,
           "refId": "B"
         },
@@ -838,7 +839,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"embed\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p50",
           "range": true,
           "refId": "C"
         }
@@ -945,7 +946,7 @@
         {
           "editorMode": "builder",
           "expr": "sum(rate(stage_processed_items_total{stage_name=\"index\"}[5m]))",
-          "legendFormat": "__auto",
+          "legendFormat": "total/sec",
           "range": true,
           "refId": "A"
         },
@@ -958,7 +959,7 @@
           "expr": "sum(rate(stage_errors_total{stage_name=\"index\"}[5m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "err/sec",
           "range": true,
           "refId": "B"
         }
@@ -1052,7 +1053,7 @@
         {
           "editorMode": "builder",
           "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"index\"}[5m])))",
-          "legendFormat": "__auto",
+          "legendFormat": "p99",
           "range": true,
           "refId": "A"
         },
@@ -1064,7 +1065,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"index\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p95",
           "range": true,
           "refId": "B"
         },
@@ -1076,7 +1077,7 @@
           "editorMode": "builder",
           "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"index\"}[5m])))",
           "hide": false,
-          "legendFormat": "__auto",
+          "legendFormat": "p50",
           "range": true,
           "refId": "C"
         }
