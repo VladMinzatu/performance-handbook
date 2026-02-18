@@ -17,7 +17,7 @@ type TelemetryMetrics struct {
 	textSizeHistogram   metric.Int64Histogram
 
 	// Generic stage metrics
-	processingLatencyHistogram      metric.Int64Histogram
+	processingLatencyHistogram      metric.Float64Histogram
 	stageTotalProcessedItemsCounter metric.Int64Counter
 	stageErrorsCounter              metric.Int64Counter
 
@@ -38,7 +38,7 @@ func (t *TelemetryMetrics) RecordDataLoadingRequestTextSize(ctx context.Context,
 }
 
 func (t *TelemetryMetrics) RecordProcessingLatency(ctx context.Context, latency time.Duration, stageName string) {
-	t.processingLatencyHistogram.Record(ctx, latency.Milliseconds(), metric.WithAttributes(attribute.String("stage_name", stageName)))
+	t.processingLatencyHistogram.Record(ctx, float64(latency.Nanoseconds())/1000_000.0, metric.WithAttributes(attribute.String("stage_name", stageName)))
 }
 
 func (t *TelemetryMetrics) IncStageTotalProcessedItems(ctx context.Context, stageName string) {
@@ -85,8 +85,27 @@ func InitMetrics() (*TelemetryMetrics, error) {
 		return nil, err
 	}
 
-	processingLatencyHistogram, err := meter.Int64Histogram("processing_latency",
+	processingLatencyHistogram, err := meter.Float64Histogram("processing_latency",
 		metric.WithDescription("Histogram of processing latencies"),
+		metric.WithUnit("ms"),
+		metric.WithExplicitBucketBoundaries(
+			0.005, // 5us
+			0.01,  // 10us
+			0.025, // 25us
+			0.05,  // 50us
+			0.1,   // 100us
+			0.25,
+			0.5,
+			1.0,
+			2.0,
+			5.0,
+			10.0,
+			25.0,
+			50.0,
+			100.0,
+			250.0,
+			500.0,
+		),
 	)
 	if err != nil {
 		return nil, err

@@ -310,7 +310,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -338,7 +339,7 @@
       "targets": [
         {
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"load\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"load\"}[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "A"
@@ -349,7 +350,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"load\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"load\"}[5m])))",
           "hide": false,
           "legendFormat": "p95",
           "range": true,
@@ -361,7 +362,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"load\"}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"load\"}[5m])))",
           "hide": false,
           "legendFormat": "p50",
           "range": true,
@@ -548,7 +549,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -576,7 +578,7 @@
       "targets": [
         {
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"tokenize\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"tokenize\"}[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "A"
@@ -587,7 +589,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"tokenize\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"tokenize\"}[5m])))",
           "hide": false,
           "legendFormat": "p95",
           "range": true,
@@ -599,7 +601,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"tokenize\"}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"tokenize\"}[5m])))",
           "hide": false,
           "legendFormat": "p50",
           "range": true,
@@ -786,7 +788,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -814,7 +817,7 @@
       "targets": [
         {
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"embed\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"embed\"}[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "A"
@@ -825,7 +828,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"embed\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"embed\"}[5m])))",
           "hide": false,
           "legendFormat": "p95",
           "range": true,
@@ -837,7 +840,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"embed\"}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"embed\"}[5m])))",
           "hide": false,
           "legendFormat": "p50",
           "range": true,
@@ -1024,7 +1027,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -1052,7 +1056,7 @@
       "targets": [
         {
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_bucket{stage_name=\"index\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"index\"}[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "A"
@@ -1063,7 +1067,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_bucket{stage_name=\"index\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"index\"}[5m])))",
           "hide": false,
           "legendFormat": "p95",
           "range": true,
@@ -1075,7 +1079,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_bucket{stage_name=\"index\"}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by(le) (rate(processing_latency_milliseconds_bucket{stage_name=\"index\"}[5m])))",
           "hide": false,
           "legendFormat": "p50",
           "range": true,
