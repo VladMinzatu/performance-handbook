@@ -18,7 +18,8 @@ The main components are:
 Under the hood, metrics come from:
 
 - procfs (/proc) and sysfs (/sys): node-exporter and other Linux exporters read /proc/stat, /proc/<pid>, /sys/fs/cgroup/… to get CPU, memory, and per-cgroup metrics. This is the classic, default approach for host and process metrics.
-- cgroups: container resource accounting (CPU time, memory usage, blkio) is exposed to userspace via cgroup files — Prometheus node-exporter and kubelet/cAdvisor read these to compute per-container stats.
+- cgroups: container resource accounting (CPU time, memory usage, blkio) is exposed to userspace via cgroup files - [cAdvisor](https://github.com/google/cadvisor) / kubelet read these to compute per-container stats.
+- [Node-exporter](https://github.com/prometheus/node_exporter) is a Prometheus exporter for operating system and hardware metrics. Written in go and running as a lightweight daemon, it exposes low-level system and hardware metrics of Linux hosts, i.e. node level (bare metal or VMs) to monitoring systems - most commonly Prometheus. It is commonly deployed with k8s (as a DaemonSet), but that's only one use case.
 - and then there's the k8s api for kubernetes specific stuff, eBPF for low-overhead, high-resolution kernel telemetry and the application level instrumentation.
 
 References:
