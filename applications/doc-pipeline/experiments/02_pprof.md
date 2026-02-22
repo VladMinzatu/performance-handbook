@@ -22,3 +22,19 @@ Showing top 10 nodes out of 30
 ```
 
 showing that the majority of the CPU time is spent on the CPU-bound cosine calculation.
+
+Let's have a look at the tracing output as well:
+```
+curl -o trace.out http://localhost:6060/debug/pprof/trace?seconds=10
+
+go tool trace trace.out
+```
+Producing the output (zoomed):
+
+![Trace](assets/trace.png)
+
+So taken together, we know that when the CPU is executing Go code, it is spending 90% of that time on the cosine computation. But we know that a CPU profile does not answer the question “Is the CPU fully utilized 100% of wall clock time?”.
+
+So on one hand, if we optimize around our CPU usage around the cosine computation, that is just about the only significant lever to bump our throughput when it comes to our Go code's execution.
+
+But on the other hand, we also seem to have headroom to optimize when it comes to idle regions, by looking at things such as pipeline backpressure, blocking syscalls, etc.
