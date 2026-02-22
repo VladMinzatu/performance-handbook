@@ -23,6 +23,7 @@ COPY --from=builder /doc-pipeline/doc-pipeline /app/doc-pipeline
 COPY --from=builder /doc-pipeline/data/shakespeare.txt /app/data/shakespeare.txt
 
 EXPOSE 8080
+EXPOSE 6060
 
 USER nonroot:nonroot
 

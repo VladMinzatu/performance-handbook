@@ -13,3 +13,7 @@ Let's push the number of documents to start discovering bottlenecks: let's try 1
 We're definitely hitting a limit. Nothing is spiking in our custom metrics, but the CPU appears maxed out at 200% (note: we allocated 2.0 CPU units to our application container):
 
 ![Grafana Screenshot CPU](assets/grafana_cpu.png)
+
+Since we appear to be limited by CPU saturation, we should now validate this. 
+
+[Next](02_pprof.md)

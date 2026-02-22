@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/index"
@@ -29,6 +30,11 @@ func main() {
 	go func() {
 		slog.Info("metrics available at :8080/metrics")
 		log.Fatal(http.ListenAndServe(":8080", mux))
+	}()
+
+	go func() {
+		log.Println("pprof listening on :6060")
+		log.Println(http.ListenAndServe(":6060", nil))
 	}()
 
 	generatorConfig := load.LoadGeneratorConfig{
