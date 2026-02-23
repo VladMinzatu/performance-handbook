@@ -93,6 +93,7 @@ func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, er
 	}, nil
 }
 
+//go:noinline
 func cosine(a, b []float64) float64 {
 	var sum float64
 	for i := range a {

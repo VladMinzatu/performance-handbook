@@ -38,3 +38,7 @@ So taken together, we know that when the CPU is executing Go code, it is spendin
 So on one hand, if we optimize around our CPU usage around the cosine computation, that is just about the only significant lever to bump our throughput when it comes to our Go code's execution.
 
 But on the other hand, we also seem to have headroom to optimize when it comes to idle regions, by looking at things such as pipeline backpressure, blocking syscalls, etc.
+
+But before digging deeper into optimising, let's look at one more source of telemetry data.
+
+[Next](03_pyroscope.md)
