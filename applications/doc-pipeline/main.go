@@ -42,7 +42,7 @@ func main() {
 		MinTextSize: 1_000,
 		MaxTextSize: 20_000,
 		IDPrefix:    "doc",
-		RatePerSec:  1000,
+		RatePerSec:  4000,
 		FilePath:    "data/shakespeare.txt",
 		FileSize:    5436475,
 	}

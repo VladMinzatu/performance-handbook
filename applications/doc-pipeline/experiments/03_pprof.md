@@ -43,4 +43,11 @@ So taken together, we know that when the CPU is executing Go code, it is spendin
 
 We seem to also have headroom to optimize when it comes to idle regions, by looking at things such as pipeline backpressure, blocking syscalls, etc.
 
+## Quantifying the impact of cosine
 
+We can quantify the impact of the cosine calculation a bit more by replacing it with a constant return. Trying to generate 4k documents per second, now gives us these graphs:
+
+![Grafana 4k](assets/grafana_4k.png)
+![Grafana 4k internals](assets/grafana_4k_internals.png)
+
+We are able to go through documents a lot faster, though we can't quite reach the 4k/s. At the same time, the CPU percentage is much lower, suggesting we might have quite a bit of headroom for off-CPU tuning as well.

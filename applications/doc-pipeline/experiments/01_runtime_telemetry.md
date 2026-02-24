@@ -17,3 +17,4 @@ We're definitely hitting a limit. Nothing is spiking in our custom metrics, but 
 Since we appear to be limited by CPU saturation, it makes sense to check our continuous profiler to see where exactly the CPU time is spent.
 
 [Next](02_pyroscope.md)
+
