@@ -51,3 +51,8 @@ We can quantify the impact of the cosine calculation a bit more by replacing it 
 ![Grafana 4k internals](assets/grafana_4k_internals.png)
 
 We are able to go through documents a lot faster, though we can't quite reach the 4k/s. At the same time, the CPU percentage is much lower, suggesting we might have quite a bit of headroom for off-CPU tuning as well.
+
+And here's how the pyroscope graphs look in this case:
+![Pyroscope const cos](assets/pyroscope_constant_cos.png)
+
+Nothing really sticks out so badly now.
