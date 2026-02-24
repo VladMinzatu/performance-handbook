@@ -14,6 +14,6 @@ We're definitely hitting a limit. Nothing is spiking in our custom metrics, but 
 
 ![Grafana Screenshot CPU](assets/grafana_cpu.png)
 
-Since we appear to be limited by CPU saturation, we should now validate this. 
+Since we appear to be limited by CPU saturation, it makes sense to check our continuous profiler to see where exactly the CPU time is spent.
 
-[Next](02_pprof.md)
+[Next](02_pyroscope.md)

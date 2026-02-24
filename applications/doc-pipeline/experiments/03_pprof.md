@@ -21,7 +21,13 @@ Showing top 10 nodes out of 30
      0.27s  0.52% 94.68%      0.27s  0.52%  runtime.asyncPreempt
 ```
 
-showing that the majority of the CPU time is spent on the CPU-bound cosine calculation.
+showing that the majority of the CPU time is spent on the CPU-bound cosine calculation, which is called inside DedupAndIndex. 
+
+The reason it didn't show in the pyroscope flamegraph is probably down to inlining. We can check this by blocking the inlining of `cosine` with a `//go:noinline`. After rebuilding the image and restarting the whole stack, we see:
+
+![Pyroscope noinling](assets/pyroscope_noinline.png)
+
+Indeed, everything seems to be working as expected and we get our flamegraphs from the ebpf-profiler.
 
 Let's have a look at the tracing output as well:
 ```
@@ -35,10 +41,6 @@ Producing the output (zoomed):
 
 So taken together, we know that when the CPU is executing Go code, it is spending 90% of that time on the cosine computation. But we know that a CPU profile does not answer the question “Is the CPU fully utilized 100% of wall clock time?”.
 
-So on one hand, if we optimize around our CPU usage around the cosine computation, that is just about the only significant lever to bump our throughput when it comes to our Go code's execution.
+We seem to also have headroom to optimize when it comes to idle regions, by looking at things such as pipeline backpressure, blocking syscalls, etc.
 
-But on the other hand, we also seem to have headroom to optimize when it comes to idle regions, by looking at things such as pipeline backpressure, blocking syscalls, etc.
 
-But before digging deeper into optimising, let's look at one more source of telemetry data.
-
-[Next](03_pyroscope.md)
