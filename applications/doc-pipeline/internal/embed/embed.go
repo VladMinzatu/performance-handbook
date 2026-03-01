@@ -14,7 +14,7 @@ func Hash(data []byte) uint64 {
 	return h.Sum64()
 }
 
-type Embedding []float64
+type Embedding []float32
 
 type EmbeddedDoc struct {
 	ID        string
@@ -30,14 +30,14 @@ func NewEmbedder(dim int) *Embedder {
 }
 
 func (e *Embedder) Embed(doc tokenize.TokenizedDoc) (EmbeddedDoc, error) {
-	vec := make([]float64, e.dim)
+	vec := make([]float32, e.dim)
 
 	for _, tok := range doc.Tokens {
 		h := Hash([]byte(tok.Term))
 		idx := int(h % uint64(e.dim))
-		sign := 1.0
+		sign := float32(1.0)
 		if h&1 == 1 {
-			sign = -1.0
+			sign = float32(-1.0)
 		}
 		vec[idx] += sign
 	}
@@ -49,13 +49,13 @@ func (e *Embedder) Embed(doc tokenize.TokenizedDoc) (EmbeddedDoc, error) {
 	}, nil
 }
 
-func normalize(vec []float64) {
-	sum := 0.0
+func normalize(vec []float32) {
+	sum := float32(0.0)
 	for _, v := range vec {
 		sum += v * v
 	}
-	norm := math.Sqrt(sum)
+	norm := math.Sqrt(float64(sum))
 	for i := range vec {
-		vec[i] /= norm
+		vec[i] /= float32(norm)
 	}
 }

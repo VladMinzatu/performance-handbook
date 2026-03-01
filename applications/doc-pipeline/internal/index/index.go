@@ -14,7 +14,7 @@ const (
 )
 
 type IndexMetrics interface {
-	SetDeduplicationThreshold(ctx context.Context, threshold float64)
+	SetDeduplicationThreshold(ctx context.Context, threshold float32)
 	IncTotalProcessedDocumentsForIndexing(ctx context.Context)
 	IncTotalDuplicateDocuments(ctx context.Context)
 }
@@ -23,18 +23,18 @@ type DedupResult struct {
 	ID          string
 	IsDuplicate bool
 	NearestID   string
-	Similarity  float64
+	Similarity  float32
 }
 
 type EmbeddingIndex struct {
 	mu             sync.RWMutex
 	ids            []string
-	vecs           [][]float64
-	dedupThreshold float64
+	vecs           [][]float32
+	dedupThreshold float32
 	metrics        IndexMetrics
 }
 
-func NewEmbeddingIndex(dedupThreshold float64, metrics IndexMetrics) (*EmbeddingIndex, error) {
+func NewEmbeddingIndex(dedupThreshold float32, metrics IndexMetrics) (*EmbeddingIndex, error) {
 	if dedupThreshold <= 0.0 || dedupThreshold > 1.0 {
 		return nil, errors.New("deduplication threshold must be between 0.0 and 1.0")
 	}
@@ -42,7 +42,7 @@ func NewEmbeddingIndex(dedupThreshold float64, metrics IndexMetrics) (*Embedding
 	metrics.SetDeduplicationThreshold(context.Background(), dedupThreshold)
 	return &EmbeddingIndex{
 		ids:            make([]string, 0, DefaultCapacity),
-		vecs:           make([][]float64, 0, DefaultCapacity),
+		vecs:           make([][]float32, 0, DefaultCapacity),
 		dedupThreshold: dedupThreshold,
 		metrics:        metrics,
 	}, nil
@@ -55,14 +55,14 @@ func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, er
 	idx.mu.RLock()
 	n := len(idx.ids)
 	ids := make([]string, n)
-	vecs := make([][]float64, n)
+	vecs := make([][]float32, n)
 	copy(ids, idx.ids)
 	copy(vecs, idx.vecs)
 	idx.mu.RUnlock()
 
 	// find nearest neighbor
 	var bestID string
-	var bestScore float64
+	var bestScore float32
 
 	for i, v := range vecs {
 		s := cosine(doc.Embedding, v)
@@ -94,8 +94,8 @@ func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, er
 }
 
 //go:noinline
-func cosine(a, b []float64) float64 {
-	var sum float64
+func cosine(a, b []float32) float32 {
+	var sum float32
 	for i := range a {
 		sum += a[i] * b[i]
 	}

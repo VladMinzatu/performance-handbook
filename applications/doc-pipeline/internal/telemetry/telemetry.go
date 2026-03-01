@@ -49,8 +49,8 @@ func (t *TelemetryMetrics) IncStageErrors(ctx context.Context, stageName string)
 	t.stageErrorsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("stage_name", stageName)))
 }
 
-func (t *TelemetryMetrics) SetDeduplicationThreshold(ctx context.Context, threshold float64) {
-	t.deduplicationThreshold.Record(ctx, threshold)
+func (t *TelemetryMetrics) SetDeduplicationThreshold(ctx context.Context, threshold float32) {
+	t.deduplicationThreshold.Record(ctx, float64(threshold))
 }
 
 func (t *TelemetryMetrics) IncTotalProcessedDocumentsForIndexing(ctx context.Context) {

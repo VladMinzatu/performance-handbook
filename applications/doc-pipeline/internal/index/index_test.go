@@ -10,12 +10,12 @@ import (
 )
 
 type TestIndexMetrics struct {
-	deduplicationThreshold             float64
+	deduplicationThreshold             float32
 	totalProcessedDocumentsForIndexing int64
 	totalDuplicateDocuments            int64
 }
 
-func (m *TestIndexMetrics) SetDeduplicationThreshold(ctx context.Context, threshold float64) {
+func (m *TestIndexMetrics) SetDeduplicationThreshold(ctx context.Context, threshold float32) {
 	m.deduplicationThreshold = threshold
 }
 
@@ -43,7 +43,7 @@ func TestNewEmbeddingIndex(t *testing.T) {
 		t.Errorf("expected empty vecs, got length %d", len(idx.vecs))
 	}
 
-	if metrics.deduplicationThreshold != 0.8 {
+	if metrics.deduplicationThreshold != float32(0.8) {
 		t.Errorf("expected deduplication threshold 0.8, got %f", metrics.deduplicationThreshold)
 	}
 
@@ -507,21 +507,21 @@ func TestDedupAndIndex_LargeEmbedding(t *testing.T) {
 }
 
 func createEmbedding(dim int, nonZeroIndices []int) embed.Embedding {
-	vec := make([]float64, dim)
+	vec := make([]float32, dim)
 	for _, idx := range nonZeroIndices {
 		if idx < dim {
 			vec[idx] = 1.0
 		}
 	}
 
-	sum := 0.0
+	sum := float32(0.0)
 	for _, v := range vec {
 		sum += v * v
 	}
-	norm := math.Sqrt(sum)
+	norm := math.Sqrt(float64(sum))
 	if norm > 0 {
 		for i := range vec {
-			vec[i] /= norm
+			vec[i] /= float32(norm)
 		}
 	}
 

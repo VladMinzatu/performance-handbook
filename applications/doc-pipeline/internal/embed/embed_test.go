@@ -54,7 +54,7 @@ func TestEmbed_EmptyTokens(t *testing.T) {
 	}
 
 	for i, v := range result.Embedding {
-		if !math.IsNaN(v) && v != 0.0 {
+		if !math.IsNaN(float64(v)) && v != 0.0 {
 			t.Errorf("expected zero or NaN at index %d, got %f", i, v)
 		}
 	}
@@ -164,7 +164,7 @@ func TestEmbed_Deterministic(t *testing.T) {
 	}
 
 	for i := range result1.Embedding {
-		if math.Abs(result1.Embedding[i]-result2.Embedding[i]) > 1e-10 {
+		if math.Abs(float64(result1.Embedding[i]-result2.Embedding[i])) > 1e-10 {
 			t.Errorf("results should be identical at index %d: got %f and %f", i, result1.Embedding[i], result2.Embedding[i])
 		}
 	}
@@ -200,7 +200,7 @@ func TestEmbed_DifferentTokensProduceDifferentEmbeddings(t *testing.T) {
 
 	identical := true
 	for i := range result1.Embedding {
-		if math.Abs(result1.Embedding[i]-result2.Embedding[i]) > 1e-10 {
+		if math.Abs(float64(result1.Embedding[i]-result2.Embedding[i])) > 1e-10 {
 			identical = false
 			break
 		}
@@ -334,10 +334,10 @@ func assertNormalized(t *testing.T, vec Embedding) {
 
 	sum := 0.0
 	for _, v := range vec {
-		if math.IsNaN(v) || math.IsInf(v, 0) {
+		if math.IsNaN(float64(v)) || math.IsInf(float64(v), 0) {
 			continue
 		}
-		sum += v * v
+		sum += float64(v * v)
 	}
 
 	norm := math.Sqrt(sum)
@@ -346,7 +346,7 @@ func assertNormalized(t *testing.T, vec Embedding) {
 		return
 	}
 
-	if math.Abs(norm-1.0) > 1e-10 {
+	if math.Abs(norm-1.0) > 1e-6 {
 		t.Errorf("vector should be normalized (norm=1.0), got norm=%f", norm)
 	}
 }
@@ -356,7 +356,7 @@ func assertNonZeroSum(t *testing.T, vec Embedding) {
 
 	hasNonZero := false
 	for _, v := range vec {
-		if math.Abs(v) > 1e-10 {
+		if math.Abs(float64(v)) > 1e-10 {
 			hasNonZero = true
 			break
 		}
