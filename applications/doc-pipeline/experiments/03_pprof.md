@@ -55,4 +55,6 @@ We are able to go through documents a lot faster, though we can't quite reach th
 And here's how the pyroscope graphs look in this case:
 ![Pyroscope const cos](assets/pyroscope_constant_cos.png)
 
-Nothing really sticks out so badly now.
+Nothing really sticks out so badly now. So next let's look at potential things to optimize.
+
+[Next](./04_float32.md)
