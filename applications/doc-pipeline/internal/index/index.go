@@ -24,7 +24,7 @@ type DedupResult struct {
 }
 
 type EmbeddingIndex struct {
-	mu             sync.Mutex
+	mu             sync.RWMutex
 	graph          *hnsw.Graph[string]
 	dedupThreshold float32
 	metrics        IndexMetrics
@@ -49,16 +49,16 @@ func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, er
 	ctx := context.Background()
 	idx.metrics.IncTotalProcessedDocumentsForIndexing(ctx)
 
-	idx.mu.Lock()
-	defer idx.mu.Unlock() // TODO: rw lock for more granular locking
-
 	var isDup bool
 	var bestID string
 	var bestScore float32
 
 	var vec hnsw.Vector
 	vec = doc.Embedding
+	idx.mu.RLock()
 	neighbors := idx.graph.SearchWithDistance(vec, 1)
+	idx.mu.RUnlock()
+
 	if len(neighbors) > 0 {
 		bestID = neighbors[0].Key
 		similarity := 1 - neighbors[0].Distance
@@ -68,12 +68,16 @@ func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, er
 
 		slog.Debug("Found nearest neighbor", "id", bestID, "similarity", bestScore, "isDup", isDup)
 		if !isDup {
+			idx.mu.Lock()
 			idx.graph.Add(hnsw.Node[string]{Key: doc.ID, Value: doc.Embedding})
+			idx.mu.Unlock()
 		} else {
 			idx.metrics.IncTotalDuplicateDocuments(ctx)
 		}
 	} else {
+		idx.mu.Lock()
 		idx.graph.Add(hnsw.Node[string]{Key: doc.ID, Value: doc.Embedding})
+		idx.mu.Unlock()
 	}
 
 	return DedupResult{
