@@ -7,10 +7,7 @@ import (
 	"sync"
 
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
-)
-
-const (
-	DefaultCapacity = 1024
+	"github.com/coder/hnsw"
 )
 
 type IndexMetrics interface {
@@ -27,9 +24,8 @@ type DedupResult struct {
 }
 
 type EmbeddingIndex struct {
-	mu             sync.RWMutex
-	ids            []string
-	vecs           [][]float32
+	mu             sync.Mutex
+	graph          *hnsw.Graph[string]
 	dedupThreshold float32
 	metrics        IndexMetrics
 }
@@ -39,10 +35,10 @@ func NewEmbeddingIndex(dedupThreshold float32, metrics IndexMetrics) (*Embedding
 		return nil, errors.New("deduplication threshold must be between 0.0 and 1.0")
 	}
 
+	g := hnsw.NewGraph[string]()
 	metrics.SetDeduplicationThreshold(context.Background(), dedupThreshold)
 	return &EmbeddingIndex{
-		ids:            make([]string, 0, DefaultCapacity),
-		vecs:           make([][]float32, 0, DefaultCapacity),
+		graph:          g,
 		dedupThreshold: dedupThreshold,
 		metrics:        metrics,
 	}, nil
@@ -50,39 +46,34 @@ func NewEmbeddingIndex(dedupThreshold float32, metrics IndexMetrics) (*Embedding
 
 func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, error) {
 	slog.Debug("Processing document for dedupping and indexing", "id", doc.ID)
-	idx.metrics.IncTotalProcessedDocumentsForIndexing(context.Background())
-	// snapshot
-	idx.mu.RLock()
-	n := len(idx.ids)
-	ids := make([]string, n)
-	vecs := make([][]float32, n)
-	copy(ids, idx.ids)
-	copy(vecs, idx.vecs)
-	idx.mu.RUnlock()
+	ctx := context.Background()
+	idx.metrics.IncTotalProcessedDocumentsForIndexing(ctx)
 
-	// find nearest neighbor
+	idx.mu.Lock()
+	defer idx.mu.Unlock() // TODO: rw lock for more granular locking
+
+	var isDup bool
 	var bestID string
 	var bestScore float32
 
-	for i, v := range vecs {
-		s := cosine(doc.Embedding, v)
-		if s > bestScore {
-			bestScore = s
-			bestID = ids[i]
+	var vec hnsw.Vector
+	vec = doc.Embedding
+	neighbors := idx.graph.SearchWithDistance(vec, 1)
+	if len(neighbors) > 0 {
+		bestID = neighbors[0].Key
+		similarity := 1 - neighbors[0].Distance
+		isDup = similarity >= idx.dedupThreshold
+		bestScore = similarity
+		slog.Debug("Is duplicate", "isDup", isDup)
+
+		slog.Debug("Found nearest neighbor", "id", bestID, "similarity", bestScore, "isDup", isDup)
+		if !isDup {
+			idx.graph.Add(hnsw.Node[string]{Key: doc.ID, Value: doc.Embedding})
+		} else {
+			idx.metrics.IncTotalDuplicateDocuments(ctx)
 		}
-	}
-
-	slog.Debug("Found nearest neighbor", "id", bestID, "similarity", bestScore)
-	isDup := bestScore >= idx.dedupThreshold
-	slog.Debug("Is duplicate", "isDup", isDup)
-
-	if !isDup {
-		idx.mu.Lock()
-		idx.ids = append(idx.ids, doc.ID)
-		idx.vecs = append(idx.vecs, doc.Embedding)
-		idx.mu.Unlock()
 	} else {
-		idx.metrics.IncTotalDuplicateDocuments(context.Background())
+		idx.graph.Add(hnsw.Node[string]{Key: doc.ID, Value: doc.Embedding})
 	}
 
 	return DedupResult{
@@ -91,12 +82,4 @@ func (idx *EmbeddingIndex) DedupAndIndex(doc embed.EmbeddedDoc) (DedupResult, er
 		NearestID:   bestID,
 		Similarity:  bestScore,
 	}, nil
-}
-
-func cosine(a, b []float32) float32 {
-	var sum float32
-	for i := range a {
-		sum += a[i] * b[i]
-	}
-	return sum
 }

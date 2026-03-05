@@ -8,3 +8,6 @@ After we rebuild and rerun we can observe the following behavior:
 
 This is pretty much exactly the same behavior as before. No quick wins here.
 
+And we could explore some other such low level optimizations, but it is clear that this brute-force approach is something we want to move away from, so we will just go ahead and do that now.
+
+[Next](05_hnsw.md)

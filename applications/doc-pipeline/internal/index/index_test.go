@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"math"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -33,14 +34,6 @@ func TestNewEmbeddingIndex(t *testing.T) {
 
 	if idx == nil {
 		t.Fatal("NewEmbeddingIndex returned nil")
-	}
-
-	if len(idx.ids) != 0 {
-		t.Errorf("expected empty ids, got length %d", len(idx.ids))
-	}
-
-	if len(idx.vecs) != 0 {
-		t.Errorf("expected empty vecs, got length %d", len(idx.vecs))
 	}
 
 	if metrics.deduplicationThreshold != float32(0.8) {
@@ -96,13 +89,6 @@ func TestDedupAndIndex_EmptyIndex(t *testing.T) {
 		t.Errorf("expected similarity 0.0, got %f", result.Similarity)
 	}
 
-	if len(idx.ids) != 1 {
-		t.Errorf("expected 1 document in index, got %d", len(idx.ids))
-	}
-
-	if idx.ids[0] != "doc-1" {
-		t.Errorf("expected 'doc-1' in index, got '%s'", idx.ids[0])
-	}
 	if metrics.totalProcessedDocumentsForIndexing != 1 {
 		t.Errorf("expected total processed documents for indexing 1, got %d", metrics.totalProcessedDocumentsForIndexing)
 	}
@@ -139,8 +125,8 @@ func TestDedupAndIndex_NonDuplicate(t *testing.T) {
 		t.Error("expected not duplicate for different embeddings")
 	}
 
-	if len(idx.ids) != 2 {
-		t.Errorf("expected 2 documents in index, got %d", len(idx.ids))
+	if idx.graph.Len() != 2 {
+		t.Errorf("expected 2 documents in index, got %d", idx.graph.Len())
 	}
 	if metrics.totalProcessedDocumentsForIndexing != 2 {
 		t.Errorf("expected total processed documents for indexing 2, got %d", metrics.totalProcessedDocumentsForIndexing)
@@ -186,8 +172,8 @@ func TestDedupAndIndex_Duplicate(t *testing.T) {
 		t.Errorf("expected high similarity for identical embeddings, got %f", result.Similarity)
 	}
 
-	if len(idx.ids) != 1 {
-		t.Errorf("expected 1 document in index (duplicate not added), got %d", len(idx.ids))
+	if idx.graph.Len() != 1 {
+		t.Errorf("expected 1 document in index (duplicate not added), got %d", idx.graph.Len())
 	}
 	if metrics.totalProcessedDocumentsForIndexing != 2 {
 		t.Errorf("expected total processed documents for indexing 2, got %d", metrics.totalProcessedDocumentsForIndexing)
@@ -219,8 +205,8 @@ func TestDedupAndIndex_MultipleDocuments(t *testing.T) {
 			t.Errorf("doc-%d should not be duplicate", i+1)
 		}
 
-		if len(idx.ids) != i+1 {
-			t.Errorf("expected %d documents in index, got %d", i+1, len(idx.ids))
+		if idx.graph.Len() != i+1 {
+			t.Errorf("expected %d documents in index, got %d", i+1, idx.graph.Len())
 		}
 
 		if metrics.totalProcessedDocumentsForIndexing != int64(i+1) {
@@ -287,12 +273,12 @@ func TestDedupAndIndex_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	numDocs := 100
 
+	wg.Add(numDocs)
 	for i := 0; i < numDocs; i++ {
-		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 			doc := embed.EmbeddedDoc{
-				ID:        string(rune('a' + id%26)),
+				ID:        "doc-" + strconv.Itoa(id),
 				Embedding: createEmbedding(10, []int{id}),
 			}
 			_, err := idx.DedupAndIndex(doc)
@@ -304,8 +290,8 @@ func TestDedupAndIndex_ConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 
-	if len(idx.ids) != numDocs {
-		t.Errorf("expected %d documents in index, got %d", numDocs, len(idx.ids))
+	if idx.graph.Len() != numDocs {
+		t.Errorf("expected %d documents in index, got %d", numDocs, idx.graph.Len())
 	}
 }
 
@@ -328,8 +314,8 @@ func TestDedupAndIndex_ConcurrentDuplicateDetection(t *testing.T) {
 	duplicates := 0
 	var mu sync.Mutex
 
+	wg.Add(numConcurrent)
 	for i := 0; i < numConcurrent; i++ {
-		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			doc := embed.EmbeddedDoc{
@@ -355,8 +341,8 @@ func TestDedupAndIndex_ConcurrentDuplicateDetection(t *testing.T) {
 		t.Error("expected at least one duplicate detection")
 	}
 
-	if len(idx.ids) > 2 {
-		t.Errorf("expected at most 2 documents in index (original + maybe one duplicate), got %d", len(idx.ids))
+	if idx.graph.Len() > 2 {
+		t.Errorf("expected at most 2 documents in index (original + maybe one duplicate), got %d", idx.graph.Len())
 	}
 }
 
@@ -494,8 +480,8 @@ func TestDedupAndIndex_LargeEmbedding(t *testing.T) {
 		t.Error("expected not duplicate for first document")
 	}
 
-	if len(idx.ids) != 1 {
-		t.Errorf("expected 1 document in index, got %d", len(idx.ids))
+	if idx.graph.Len() != 1 {
+		t.Errorf("expected 1 document in index, got %d", idx.graph.Len())
 	}
 
 	if metrics.totalProcessedDocumentsForIndexing != 1 {
