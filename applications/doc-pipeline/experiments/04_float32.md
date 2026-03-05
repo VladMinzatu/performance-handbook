@@ -4,7 +4,7 @@ Because floating point multiplication is taking up the vast majority of the on-C
 
 After we rebuild and rerun we can observe the following behavior:
 
-![assets](assets/float32_grafana.png)
+![float32](assets/float32_grafana.png)
 
 This is pretty much exactly the same behavior as before. No quick wins here.
 
