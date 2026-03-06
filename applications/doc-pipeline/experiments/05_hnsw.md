@@ -20,3 +20,8 @@ There is a low hanging fruit change we can still make: instead of using a Mutex 
 ![hnsw grafana internal metrics rwlock](assets/hnsw_grafana_internal_rwlock.png)
 
 I would say pretty much in line with expectations: the improvement is noticeable, but not groundbreaking. Still, RWMutex is worth it.
+
+We can also take a look at how the CPU profile has changed:
+![hnsw pyroscope](assets/pyroscope_hnsw.png)
+
+While the index updating logic is still the dominant user of CPU time, things look much more balanced now, with housekeeping and opentelemetry metrics updates coming well into view.
