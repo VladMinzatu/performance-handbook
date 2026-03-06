@@ -25,3 +25,7 @@ We can also take a look at how the CPU profile has changed:
 ![hnsw pyroscope](assets/pyroscope_hnsw.png)
 
 While the index updating logic is still the dominant user of CPU time, things look much more balanced now, with housekeeping and opentelemetry metrics updates coming well into view.
+
+There are more efficient implementations of HNSW out there and other optimizations to try for CPU bound work, but at this point it's probably more interesting to look at what we can optimize off CPU.
+
+[Next](./06_block_profile.md)

@@ -6,8 +6,9 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"runtime"
 
-	// _ "net/http/pprof"
+	_ "net/http/pprof"
 
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/index"
@@ -33,10 +34,11 @@ func main() {
 		log.Fatal(http.ListenAndServe(":8080", mux))
 	}()
 
-	// go func() {
-	// 	log.Println("pprof listening on :6060")
-	// 	log.Println(http.ListenAndServe(":6060", nil))
-	// }()
+	runtime.SetBlockProfileRate(1)
+	go func() {
+		log.Println("pprof listening on :6060")
+		log.Println(http.ListenAndServe(":6060", nil))
+	}()
 
 	generatorConfig := load.LoadGeneratorConfig{
 		MinTextSize: 1_000,
