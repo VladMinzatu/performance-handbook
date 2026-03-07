@@ -6,8 +6,9 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"runtime"
 
-	// _ "net/http/pprof"
+	_ "net/http/pprof"
 
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/embed"
 	"github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/index"
@@ -33,11 +34,11 @@ func main() {
 		log.Fatal(http.ListenAndServe(":8080", mux))
 	}()
 
-	// runtime.SetBlockProfileRate(1)
-	// go func() {
-	// 	log.Println("pprof listening on :6060")
-	// 	log.Println(http.ListenAndServe(":6060", nil))
-	// }()
+	runtime.SetBlockProfileRate(1)
+	go func() {
+		log.Println("pprof listening on :6060")
+		log.Println(http.ListenAndServe(":6060", nil))
+	}()
 
 	generatorConfig := load.LoadGeneratorConfig{
 		MinTextSize: 1_000,
@@ -53,7 +54,7 @@ func main() {
 
 	dataLoadingStage := pipeline.NewStage(
 		"load",
-		10,
+		2,
 		100,
 		dataLoadingChan,
 		ingest.LoadData,
@@ -61,7 +62,7 @@ func main() {
 	)
 	tokenizeStage := pipeline.NewStage(
 		"tokenize",
-		10,
+		2,
 		100,
 		dataLoadingStage.Run(ctx),
 		tokenize.Tokenize,
@@ -71,7 +72,7 @@ func main() {
 	embedder := embed.NewEmbedder(1024)
 	embedDocStage := pipeline.NewStage(
 		"embed",
-		1,
+		2,
 		100,
 		tokenizeStage.Run(ctx),
 		embedder.Embed,
@@ -84,7 +85,7 @@ func main() {
 	}
 	indexStage := pipeline.NewStage(
 		"index",
-		10,
+		2,
 		100,
 		embedDocStage.Run(ctx),
 		indexer.DedupAndIndex,
