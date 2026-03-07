@@ -59,4 +59,4 @@ It looks like we're back to balance in our pipeline, while having cut some of th
 
 What we've seen in this section is that we could spot some unnecessary overhead that we could eliminate. (we cut the number of workers by a factor of 5 without any loss in throughput).
 
-But it hasn't brought us spectacular gains here. If we had some IO heavy stages sprinkled in there, we probably could have made some interesting changes, like put more workers in the IO stage to get some real visible improvements.
+But it hasn't brought us spectacular gains here. If we had some IO heavy stages sprinkled in there, we probably could have made some interesting changes, like put more workers in the IO stage to get some real visible improvements. We do have the document loading stage, but since we are using one relatively small backing document, it is probably well cached throuhout our pipeline run.
