@@ -54,7 +54,7 @@ func main() {
 
 	dataLoadingStage := pipeline.NewStage(
 		"load",
-		2,
+		1,
 		100,
 		dataLoadingChan,
 		ingest.LoadData,
@@ -62,7 +62,7 @@ func main() {
 	)
 	tokenizeStage := pipeline.NewStage(
 		"tokenize",
-		2,
+		3,
 		100,
 		dataLoadingStage.Run(ctx),
 		tokenize.Tokenize,
@@ -72,7 +72,7 @@ func main() {
 	embedder := embed.NewEmbedder(1024)
 	embedDocStage := pipeline.NewStage(
 		"embed",
-		2,
+		1,
 		100,
 		tokenizeStage.Run(ctx),
 		embedder.Embed,
@@ -85,7 +85,7 @@ func main() {
 	}
 	indexStage := pipeline.NewStage(
 		"index",
-		2,
+		30,
 		100,
 		embedDocStage.Run(ctx),
 		indexer.DedupAndIndex,

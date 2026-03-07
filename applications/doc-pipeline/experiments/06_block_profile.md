@@ -60,3 +60,27 @@ It looks like we're back to balance in our pipeline, while having cut some of th
 What we've seen in this section is that we could spot some unnecessary overhead that we could eliminate. (we cut the number of workers by a factor of 5 without any loss in throughput).
 
 But it hasn't brought us spectacular gains here. If we had some IO heavy stages sprinkled in there, we probably could have made some interesting changes, like put more workers in the IO stage to get some real visible improvements. We do have the document loading stage, but since we are using one relatively small backing document, it is probably well cached throuhout our pipeline run.
+
+## Reaching a better balance
+
+We know we are CPU bound, and having the same number of workers per stage does achieve a certain balance through scheduling and backpressure, but is this the best we can do? Since all work is CPU bound, shouldn't the CPU be shared to the different stages proportionally with the amount of work they do. We are plotting the p99 per stage operation and we see the following values:
+| Stage | p99 ms|
+|---|---|
+| Doc Load | 0.1 ms |
+| Tokenize | 0.3 ms | 
+| Embed | 0.1 ms | 
+| Indexing | 3.0 ms |
+
+It seems reasonable that provisioning 1, 3, 1 and 30 workers respectively should achieve ideal resource split:
+
+![imbalanced workers grafana](./assets/imbalance_grafana.png)
+
+It seems this really made a visible impact, even if not Earth shattering. We finally jumped above 3k docs/s to about 3.2 docs/s throughput. 
+
+Is this the ideal split? We chose the numbers of workers per stage in a reasoned way, but only experimentation will tell for sure if this is ideal. What does the block profile say?
+
+![imbalanced workers block](./assets/impalance_block.png)
+
+Since we are following a receive -> compute -> send pattern, what we are seeing here is consistent with the last stage being the bottleneck (the one we gave 30 workers to).
+
+We may have overdone it with 30 workers, given that we know the last stage is completely CPU bound and has its own internal locking around the data structure access via RWMutex. 
