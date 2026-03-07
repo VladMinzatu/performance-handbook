@@ -27,6 +27,8 @@ Showing top 10 nodes out of 18
 
 So `select` is the top blocking site and it's not even close. But of course, each of our stages has 2 selects. Can we get anything more specific than this?
 
+Recall that we started with all stages configured identically, with 10 workers and buffered channels with buffers of size 100 between them.
+
 We can generate a block web by typing e.g. `png` to generate a png output:
 
 ![block web](./assets/block_profile.png)
@@ -37,4 +39,11 @@ To illustrate this, let's run an experiment: setting the number of workers of on
 
 ![block web embed 1](./assets/block_profile_embed_1.png)
 
-Now the `embed` stage looks like it's spending the least time blocked in this graph. But what's happening is that it's just slowing the whole pipeline down!
+Now the `embed` stage is spending less time than the others blocked in `select`. But what is happening overall? Let's check our dashboard:
+
+![grafana with embed 1](./assets/embed_1_grafana.png)
+
+If anything, this run looks more stable run and the "underpowered" embed step did not become a bottleneck. It just spends less time blocked compared to the other stages.
+
+This makes sense if we consider that we are so CPU bound throughout the pipeline. Is the time spent blocked in `select`s an indication of the overhead we introduce with our excessive number of workers given our CPU-bound pipeline?
+ 
