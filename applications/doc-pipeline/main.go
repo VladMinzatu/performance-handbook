@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(http.ListenAndServe(":8080", mux))
 	}()
 
-	runtime.SetBlockProfileRate(1)
+	runtime.SetMutexProfileFraction(1)
 	go func() {
 		log.Println("pprof listening on :6060")
 		log.Println(http.ListenAndServe(":6060", nil))

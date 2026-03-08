@@ -33,7 +33,7 @@ We can generate a block web by typing e.g. `png` to generate a png output:
 
 ![block web](./assets/block_profile.png)
 
-The key thing to note here is that all stages block roughly equally, which is actually a good thing. It means that the pipeline is balanced and synchronized at its throughput limit.
+The key thing to note here is that all stages block roughly equally, which indicates that the pipeline is balanced and synchronized at its throughput limit - there is no clear bottleneck. However, that does not mean that this throughput is optimal. After all, the time spent blocked in the `select` is an indication that *some* resources must be wasted, as we are having workers waiting instead of processing (bot note, however, that it could be as harmless as having too many workers throughout our pipeline).
 
 To illustrate this, let's run an experiment: setting the number of workers of one of the stages (say, the `embed` step) to 1 (i.e. 1/10 the other stages).
 
@@ -63,7 +63,9 @@ But it hasn't brought us spectacular gains here. If we had some IO heavy stages 
 
 ## Reaching a better balance
 
-We know we are CPU bound, and having the same number of workers per stage does achieve a certain balance through scheduling and backpressure, but is this the best we can do? Since all work is CPU bound, shouldn't the CPU be shared to the different stages proportionally with the amount of work they do. We are plotting the p99 per stage operation and we see the following values:
+We know we are CPU bound, and having the same number of workers per stage does achieve a certain balance through scheduling and backpressure, but is this the best we can do? The fact that there is time spent blocking in our pipeline stages suggests that we can probably do better.
+
+Since all work is CPU bound, shouldn't the CPU be shared to the different stages proportionally with the amount of work they do? We are already plotting the p99 per stage operation and we see the following values:
 | Stage | p99 ms|
 |---|---|
 | Doc Load | 0.1 ms |
@@ -75,12 +77,37 @@ It seems reasonable that provisioning 1, 3, 1 and 30 workers respectively should
 
 ![imbalanced workers grafana](./assets/imbalance_grafana.png)
 
-It seems this really made a visible impact, even if not Earth shattering. We finally jumped above 3k docs/s to about 3.2 docs/s throughput. 
+It seems this really made a visible impact, even if not Earth shattering. We finally jumped above 3k docs/s to about 3.2k docs/s throughput. 
 
-Is this the ideal split? We chose the numbers of workers per stage in a reasoned way, but only experimentation will tell for sure if this is ideal. What does the block profile say?
+Is this the ideal split? We chose the numbers of workers per stage in a reasoned way, but only experimentation will tell for sure if this is ideal. What does the block profile say now?
 
 ![imbalanced workers block](./assets/impalance_block.png)
 
-Since we are following a receive -> compute -> send pattern, what we are seeing here is consistent with the last stage being the bottleneck (the one we gave 30 workers to).
+The embed stage (the second to last stage) now jumps out as being blocked often. But that doesn't mean that it is the bottleneck. Since we are following a receive -> compute -> send pattern, what we are seeing here is consistent with the last stage being the bottleneck (the one we gave 30 workers to).
 
 We may have overdone it with 30 workers, given that we know the last stage is completely CPU bound and has its own internal locking around the data structure access via RWMutex. 
+
+While we're at it, let's have a look at the mutex profile as well:
+```
+```
+curl http://localhost:6060/debug/pprof/mutex > mutex.prof
+go tool pprof mutex.prof
+```
+
+```
+The `top` output shows:
+```
+Dropped 154 nodes (cum <= 0.17s)
+      flat  flat%   sum%        cum   cum%
+    17.12s 51.35% 51.35%     17.12s 51.35%  sync.(*Mutex).Unlock (inline)
+    15.19s 45.57% 96.92%     32.32s 96.92%  sync.(*RWMutex).Unlock
+        1s  3.00% 99.92%         1s  3.00%  sync.(*RWMutex).RUnlock (inline)
+         0     0% 99.92%     33.32s 99.92%  github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/index.(*EmbeddingIndex).DedupAndIndex
+         0     0% 99.92%     33.32s 99.92%  github.com/VladMinzatu/performance-handbook/doc-pipeline/internal/index.(*EmbeddingIndex).DedupAndIndex-fm
+
+```
+
+And the graph looks like this:
+![mutex graph](./assets/mutex_profile.png)
+
+This confirms the contention that is responsible for some of the overhead. We can use this in later optimizations, but first, let's start by simply tweaking the number of workers in the last pipeline stage.
