@@ -111,3 +111,14 @@ And the graph looks like this:
 ![mutex graph](./assets/mutex_profile.png)
 
 This confirms the contention that is responsible for some of the overhead. We can use this in later optimizations, but first, let's start by simply tweaking the number of workers in the last pipeline stage.
+
+### Tweaking the number of workers
+
+As a methodology here, we will simply try reducing the number of workers progressively: 30 -> 16 -> 8 -> 4 -> 2 -> 1 and checking the block profile.
+
+> ⚠️ **Note**: As mentioned in the general README of this repo, this kind of tuning should be done with the target environment in mind. The number I arrive at in my experiements won't necessarily track in environments that have a different number of CPUs, more memory, etc.
+
+As we run this experiment, the contention decreases every step of the way all the way to 1 worker. Perhaps not surprising considering the locking around the heavy operation in that stage:
+
+![mutex graph 1 worker](./assets/block_1_last_stage.png)
+

@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(http.ListenAndServe(":8080", mux))
 	}()
 
-	runtime.SetMutexProfileFraction(1)
+	runtime.SetBlockProfileRate(1)
 	go func() {
 		log.Println("pprof listening on :6060")
 		log.Println(http.ListenAndServe(":6060", nil))
@@ -85,7 +85,7 @@ func main() {
 	}
 	indexStage := pipeline.NewStage(
 		"index",
-		30,
+		1,
 		100,
 		embedDocStage.Run(ctx),
 		indexer.DedupAndIndex,
