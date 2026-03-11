@@ -7,5 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi",
     "pydantic",
-    "uvicorn"
+    "torch>=2.10.0",
+    "transformers>=5.3.0",
+    "uvicorn",
 ]
