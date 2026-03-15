@@ -15,7 +15,7 @@ Additionally, the [opentelemetry-ebpf-profiler](https://github.com/open-telemetr
 
 Pyroscope supports the most popular industry standard encoding formats for ingestion:
 
-- [pprof profile](github.com/google/pprof/profile)
+- [pprof profile](https://github.com/google/pprof/tree/main/proto)
 - [OpenTelemetry profiling signal](https://github.com/open-telemetry/opentelemetry-proto/pull/534) - still experimental
 - Speedscope
 
