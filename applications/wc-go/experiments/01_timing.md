@@ -68,3 +68,12 @@ real    0m2.942s
 user    0m2.910s
 sys     0m0.199s
 ```
+
+So we can see very different results for the different strategies, which makes for some interesting analysis. And also, some approaches, such as mmap, yield s
+ome results that are quite close to the standard `wc` performance. Some initial observations:
+
+- first of all, I ran the experiments again to make sure I am getting consistent results, to double-check if there are some piggybacking effects of e.g. caching from successive runs. But running `scanner` after `mmap` for example, does produce similar resuts to the ones above
+- the `buffering` approach is by far the slowest - and the `sys` time is huge compared to all the others runs. It'll be interesting to check what it does differently that makes such a big difference
+- for the other strategies, the `sys` time is the lowest on most runs, but some are much lower than others. It'll be interesting to check what makes the difference there.
+
+In the next sections, we'll point different tools at different versions of the program to inspect and understand them in more detail.
