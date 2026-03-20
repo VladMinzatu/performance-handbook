@@ -11,55 +11,7 @@ Instead, though, it does support some other arguments (the `-p` flag), which ind
 
 In all strategies except for the `scanner` and `mmap2` ones, once the data is available as a byte slice, we do all processing directly on the bytes and avoid any extra heap allocations.
 
-## Time tests
-
-Let's start with the very basics: just about the simplest test we can run - timing the process run. I will use a file called `shakespeare100.txt`, which is formed by concatenating a file containing the complete works of Shakespeare 100 times over (this results in a file about 500MB in size - I did not check it in, obviously). A shakespeare.txt file can easily be found online and concatenating it can be done like so:
-
-```
-for i in {1..100};do cat shakespeare.txt >> shakespeare100.txt; done
-```
-So, running the times, first for the standard `wc` program:
-```
-% time wc shakespeare100.txt 
-12418500 89958800 543647500 shakespeare100.txt
-wc shakespeare100.txt  1.00s user 0.05s system 99% cpu 1.061 total
-```
-
-And now for the different versions of our own program:
-```
-% time ./wc-go -p scanner ~/shakespeare100.txt 
-12418500	89958800	531229000
-./wc-go -p scanner ~/shakespeare100.txt  4.35s user 0.15s system 96% cpu 4.655 total
-```
-
-```
-% time ./wc-go -p upfront ~/shakespeare100.txt
-12418500	89958800	531229000
-./wc-go -p upfront ~/shakespeare100.txt  3.61s user 0.13s system 99% cpu 3.742 total
-```
-
-```
-% time ./wc-go -p buffering ~/shakespeare100.txt
-12418500	89958800	531229000
-./wc-go -p buffering ~/shakespeare100.txt  3.94s user 0.33s system 104% cpu 4.094 total
-```
-
-```
- % time ./wc-go -p mmap ~/shakespeare100.txt
-12418500	89958800	531229000
-./wc-go -p mmap ~/shakespeare100.txt  3.64s user 0.04s system 99% cpu 3.676 total
-```
-
-```
-% time ./wc-go -p mmap2 ~/shakespeare100.txt
-12418500	89958800	531229000
-./wc-go -p mmap2 ~/shakespeare100.txt  4.35s user 0.08s system 102% cpu 4.338 total
-```
-
-It's fair to say we didn't break new ground here, but what can we notice in these initial results?
-- First, using `mmap` may feel clever, but it's probably not providing much benefit for our use case (it performs just about the same as reading everything up front). In fact, afaik, the original `wc` implementation uses `read()` syscalls to stream through the file in big contiguous chunks. Makes sense why that would be the most efficient way to go, when also considering that mmap could incur page faults. We'll need to dig into that a bit more. In general, it is known that performance benefits for memory mapped I/O are most likely when performing releated random access on large files. 
-- Looking at the time differences between the runs of different `wc-go` variants, it is quite clear to see that there is a significant difference between the variants that perform additional allocations for each line before processing it and those who don't. Isn't it more than you'd expect? Maybe. In any case, interesting to observe if you've programmed in languages that steer you towards instantiating objects very liberally.
-- And why are **all** `wc-go` variants considerably slower than the original? I would put that down to the Go runtime overhead and perhaps lack of some other compiler optimizations. We'll try to uncover that in more detail as well.
+To start off, let's look at the timing results for these different implementations -> [Next](./experiments/01_timing.md)
 
 ## Go perf tools
 
