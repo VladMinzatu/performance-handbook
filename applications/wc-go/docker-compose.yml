@@ -1,0 +1,25 @@
+services:
+  parca:
+    image: ghcr.io/parca-dev/parca:v0.27.1
+    ports:
+      - "7070:7070"
+
+  agent:
+    image: ghcr.io/parca-dev/parca-agent:v0.46.0
+    container_name: parca-agent
+    privileged: true
+    pid: host
+    ports:
+      - "7071:7071"
+    volumes:
+      - /run:/run
+      - /boot:/boot
+      - /lib/modules:/lib/modules
+      - /sys/kernel/debug:/sys/kernel/debug
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /sys/fs/bpf:/sys/fs/bpf
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+    command:
+      - "--remote-store-address=parca:7070"
+      - "--remote-store-insecure"
+    restart: unless-stopped
