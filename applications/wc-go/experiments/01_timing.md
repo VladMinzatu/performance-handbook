@@ -77,3 +77,5 @@ ome results that are quite close to the standard `wc` performance. Some initial 
 - for the other strategies, the `sys` time is the lowest on most runs, but some are much lower than others. It'll be interesting to check what makes the difference there.
 
 In the next sections, we'll point different tools at different versions of the program to inspect and understand them in more detail.
+
+[Next](./02_continuous_profiling.md)

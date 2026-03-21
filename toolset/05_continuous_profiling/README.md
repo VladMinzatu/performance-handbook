@@ -61,6 +61,15 @@ And this creates the `ebpf-profiler` binary, which we can now run:
 sudo ./ebpf-profiler -collection-agent=127.0.0.1:4317 -disable-tls
 ```
 
+## Alternative: Parca
+
+There is also an example docker-compose-parca.yml file that runs Parca and its agent. When using that as the docker compose file, the whole stack can be set up easily with just a 
+```
+docker compose up
+```
+
+And that will run Parca as well as its eBPF-based profiling agent.
+
 ## Alternative: run interactively
 
 ### Setup
