@@ -232,3 +232,5 @@ However, it's important to keep in mind that even the Go trace tool's view of th
 The Go tracer doesn't notice at all when this is potentially happening, because the mechanism here is not a syscall, it's an exception (a page fault exception, specifically). When that happens, the goroutine never calls into the runtime to say “I’m blocked.”. So the Go scheduler doesn't context-switch away from the goroutine, so no goroutine state change event is emitted into the trace. To Go, it looks like the goroutine was on the CPU and running normally. At the hardware level though, the thread is effectively paused while the kernel handles the fault, but it is not blocked in the sense where the scheduler would mark it as sleeping. During that time, though, the kernel is indeed executing code on behalf of our process (in the page fault handler, possibly doing disk I/O !!!).
 
 This is an example of why, our complete performance analysis toolkit needs to include tools that go beyond analysing the peformance of what is visible to the Go runtime - we need OS level tools.
+
+[Next](./04_bpf_tools.md)
