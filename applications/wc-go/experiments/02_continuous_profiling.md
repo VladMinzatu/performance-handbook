@@ -38,3 +38,5 @@ Taken in conjunction with the timing observations, what can we take from this?
 TODO:
 - `perf stat -e page-faults ./wc-buffering` compared to others
 - `perf stat -e page-faults,minor-faults,major-faults ./prog` and `perf record -g ./prog` to check mmap vs others
+
+[Next](./03_go_pprof.md)
