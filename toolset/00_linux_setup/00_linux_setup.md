@@ -1,4 +1,12 @@
-# Set Up Linux VM with UTM (on Mac)
+# Option 1: Set up Linux on Raspberry Pi for VNC access
+
+These are instructions for installing Ubuntu Server on a Raspberry Pi for headlerss access using VNC:
+- Dowload [Raspberry Pi Imager](https://www.raspberrypi.com/software/) and install, then run. In the imager, next:
+- Pick the device, e.g. Raspberry Pi 5. Then Next
+- Pick the OS -> Other General Purpose OS -> Ubuntu -> Ubuntu Server. 
+- ... Configure with hostname, user, password and Wi-Fi credentials.
+
+# Option 2: Set Up Linux VM with UTM (on Mac)
 
 These are instructions for creating a new VM using UTM on Mac with a fresh installation of Ubuntu server.
 
