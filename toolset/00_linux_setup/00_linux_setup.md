@@ -1,10 +1,12 @@
-# Option 1: Set up Linux on Raspberry Pi for VNC access
+# Option 1: Set up Linux on Raspberry Pi in headless mode
 
-These are instructions for installing Ubuntu Server on a Raspberry Pi for headless access using VNC:
-- Dowload [Raspberry Pi Imager](https://www.raspberrypi.com/software/) and install, then run. In the imager, next:
-- Pick the device, e.g. Raspberry Pi 5. Then Next
-- Pick the OS -> Other General Purpose OS -> Ubuntu -> Ubuntu Server. 
-- ... Configure with hostname, user, password and Wi-Fi credentials.
+These are instructions for installing Ubuntu Server on a Raspberry Pi for headless access:
+- Dowload [Raspberry Pi Imager](https://www.raspberrypi.com/software/) and install.
+- Now run Raspberry Pi Imager -> Pick device (e.g. Raspberry Pi 5) -> For the OS, pick `Other General-purpose OS` -> pick `Ubuntu Server` and configure with hostname, username, password and wifi credentials and enable ssh. Then Write to the SD card.
+- When done, plug SD card in the raspberry pi and start. No need to connect to peripherals, we can run fully headless, just wait a couple min if necessary.
+- Then it should be possible to run `ssh <user>@<hostname>.local` (for user and hostname selected earlier)
+  - If this still doesn't eventually work, connect monitor and keyboard+mouse to raspberry pi and debug (most likely wifi connection didn't work and can be checked via `ip a` and configuration fixed by editing `/etc/netplan/*.yaml` and running `sudo netplan apply`) 
+
 
 # Option 2: Set Up Linux VM with UTM (on Mac)
 
