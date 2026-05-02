@@ -5,7 +5,7 @@ These are instructions for installing Ubuntu Server on a Raspberry Pi for headle
 - Now run Raspberry Pi Imager -> Pick device (e.g. Raspberry Pi 5) -> For the OS, pick `Other General-purpose OS` -> pick `Ubuntu Server` and configure with hostname, username, password and wifi credentials and enable ssh. Then Write to the SD card.
 - When done, plug SD card in the raspberry pi and start. No need to connect to peripherals, we can run fully headless, just wait a couple min if necessary.
 - Then it should be possible to run `ssh <user>@<hostname>.local` (for user and hostname selected earlier)
-  - If this still doesn't eventually work, connect monitor and keyboard+mouse to raspberry pi one time to debug (most likely wifi connection didn't work and can be checked if wlan0 is UP or DOWN via `ip a` and configuration fixed by editing `/etc/netplan/*.yaml` and running `sudo netplan apply`) 
+  - If this still doesn't eventually work, connect monitor and keyboard+mouse to raspberry pi one time to debug (most likely wifi connection didn't work and can be checked if wlan0 is UP or DOWN xvia `ip a` and configuration fixed by editing `/etc/netplan/*.yaml` and running `sudo netplan apply`)
 
 
 # Option 2: Set Up Linux VM with UTM (on Mac)
