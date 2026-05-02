@@ -15,5 +15,5 @@ git config --global user.name "<name>"
 ```
 
 - Next, add the ssh key to GH: click on profile → settings → manage ssh key →
-- Click new or add ssh key, give it a title like “Ubuntu VM” and paste the public key (see above) → authenticator
+- Click new or add ssh key, give it a title like “Ubuntu VM” or "Raspberry Pi" and paste the public key (see above) → authenticator
 - Then git clone should work

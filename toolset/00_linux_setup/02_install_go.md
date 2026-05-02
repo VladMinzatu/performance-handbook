@@ -1,6 +1,6 @@
 # Install Go
 
-- Get the latest Go version for linux arm 64 from https://go.dev/dl/
+- Get the latest Go version for linux arm 64 from https://go.dev/dl/ (to download through ssh: `wget https://go.dev/dl/go1.26.2.linux-arm64.tar.gz` - or the whatever the required version is)
 - Remove previous binary and extract new, e.g.:
 
 ```
