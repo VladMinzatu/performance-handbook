@@ -18,8 +18,9 @@ RUNTIME.CONTAINERNAME                                                           
 nginx-test                                                                                                                 ls                    28755      28755 28246      0           /usr/bin/ls\u00a0/    
 ```
 
+**Note**: On a Mac, this setup will typically capture events for running containers, or in the Linux VM, but obviously, not what is happening on the Mac host. So to reproduce the output above, we have an nginx container running (`docker run --rm -d --name nginx-test nginx`) and when the ig inspection is running, we can trigger an exec with e.g. `docker exec nginx-test ls /`.
 
-with the possibility to filter by container or pid:
+You can also by container or pid:
 ```
 --containername <name>
 --containerid <id>
