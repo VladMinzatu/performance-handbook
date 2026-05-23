@@ -12,6 +12,13 @@ docker run --rm -it \
   run trace_exec
 ```
 
+producing output e.g.:
+```
+RUNTIME.CONTAINERNAME                                                                                                      COMM                    PID        TID TID        TTY         ARGS                                                                            ERROR
+nginx-test                                                                                                                 ls                    28755      28755 28246      0           /usr/bin/ls\u00a0/    
+```
+
+
 with the possibility to filter by container or pid:
 ```
 --containername <name>
