@@ -23,13 +23,4 @@ RUN apt-get update && \
 
 WORKDIR /opt
 
-# Fetch the Hands-on Lab
-# RUN wget https://home.fburl.com/~jonhaslam/bpftrace-hol.tar.gz .
-# RUN tar -xzf bpftrace-hol.tar.gz && rm bpftrace-hol.tar.gz
-
-# WORKDIR /opt/bpftrace-hol
-
-# # Build the load generators
-# RUN make || true
-
 CMD ["/bin/bash"]
