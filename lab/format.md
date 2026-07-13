@@ -3,3 +3,13 @@ Idea: organize labs around the systems performance debugging, tuning and underst
 - Gather evidence meant to prove or disprove the hypothesis
 - Analyze data and update understanding
 - Repeat until system is sufficiently understood / well performing.
+
+Backlog:
+- CPUs
+- Concurrency
+- Runtimes
+- Memory & GC
+- Accelerators
+- Networking
+- Databases
+- Cgroup
