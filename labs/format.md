@@ -10,6 +10,6 @@ Backlog:
 - Runtimes
 - Memory & GC
 - Accelerators
-- Networking
+- Networking and protocols
 - Databases
 - Cgroup
