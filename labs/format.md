@@ -5,11 +5,18 @@ Idea: organize labs around the systems performance debugging, tuning and underst
 - Repeat until system is sufficiently understood / well performing.
 
 Backlog:
-- CPUs
-- Concurrency
-- Runtimes
-- Memory & GC
-- Accelerators
+- CPU
+- Scheduling
+- Memory
+- Storage
 - Networking and protocols
+- Concurrency & Synchronization
+- Virtualization
+- Containers & cgroup
 - Databases
-- Cgroup
+- Language runtimes and GC
+- GPUs / accelerators
+- Compilers
+- NUMA
+- Filesystems
+- Distributed systems
