@@ -10,9 +10,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # eBPF / kernel tracing
     bpftrace \
-    bpfcc-tools \
-    linux-tools-common \
-    linux-tools-generic \
     # general Linux introspection
     strace \
     sysstat \
@@ -24,21 +21,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     stress-ng \
     fio \
     sysbench \
-    postgresql-client \
+    wrk \
     # networking
     iproute2 \
     iputils-ping \
     dnsutils \
     tcpdump \
     netcat-openbsd \
-    # analysis / scripting
+    # scripting
     python3 \
-    python3-pip \
-    python3-pandas \
-    python3-matplotlib \
     jq \
     curl \
-    wget \
     git \
     less \
     vim \
