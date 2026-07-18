@@ -1,0 +1,22 @@
+services:
+  analysis:
+    build: .
+    image: performance-handbook/analysis:latest
+    container_name: lab-analysis
+    hostname: analysis
+    privileged: true # eBPF tracing needs CAP_SYS_ADMIN/BPF/PERFMON + mount rights; simplest reliable option for a local sandbox
+    pid: host # so the container can see and trace PIDs from any other container on this Docker host
+    command: sleep infinity # keep it running; use `docker compose exec analysis bash` for interactive sessions
+    restart: unless-stopped
+    working_dir: /workspace
+    environment:
+      - HOST_ROOT=/host # tells `ig` where to find the host's containerd runtime state, for container-name enrichment
+    volumes:
+      - ../../..:/workspace # repo root, so scripts/results read and land on the host
+      - /:/host:ro # `ig` needs this (not just the docker socket) to read containerd's per-container OCI state for enrichment
+    networks:
+      - labnet
+
+networks:
+  labnet:
+    name: labnet

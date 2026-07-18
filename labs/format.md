@@ -4,6 +4,12 @@ Idea: organize labs around the systems performance debugging, tuning and underst
 - Analyze data and update understanding
 - Repeat until system is sufficiently understood / well performing.
 
+Tooling: experiments run in Docker (via OrbStack's Linux VM) using the
+reusable infrastructure in [tools/](./tools/README.md) - a long-running
+privileged "analysis" container (bpftrace, Inspektor Gadget, profilers,
+benchmarking tools) plus a per-experiment compose file for the system under
+test.
+
 Backlog:
 - CPU
 - Scheduling
