@@ -75,4 +75,18 @@ which produces this result:
 
 Latencies this low suggest that all pages were already resident in the Linux page cache, so although we ask the OS for the pages, there is likely no actual disk I/O given these latencies.
 
-So this would suggest that this is mainly a CPU-bound workload, not an IO-bound one.
+So this would suggest that this is mainly a CPU/syscall-bound workload, not an IO-bound one.
+
+We can confirm this by looking for how many actual block I/O requests are actually generated under the same load:
+```
+bpftrace -e '
+tracepoint:block:block_rq_issue { @issued = count(); }
+tracepoint:block:block_rq_complete { @completed_us = hist(nsecs / 1000); }'
+```
+And indeed, the number of issued block:block_rq_issue is much smaller than the pread syscall count (as reported by postgres and confirmed earlier):
+```
+@completed_us: 
+[256G, 512G)         353 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+
+@issued: 351
+```
