@@ -41,3 +41,38 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 ----------+--------------+----------
         5 |     10000000 |        0
 ```
+
+We can drill deeper into the behavior of fetching pages from the OS (non-cached in postgres) with the following command:
+```
+bpftrace -e '
+tracepoint:syscalls:sys_enter_pread64 /comm == "postgres"/ { @start[tid] = nsecs; }
+tracepoint:syscalls:sys_exit_pread64 /@start[tid]/ {
+  @read_latency_ns = hist(nsecs - @start[tid]);
+  delete(@start[tid]);
+}'
+```
+
+which produces this result:
+```
+@read_latency_ns: 
+[256, 512)          9522 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@      |
+[512, 1K)           4995 |@@@@@@@@@@@@@@@@@@@@@@@@                            |
+[1K, 2K)            4177 |@@@@@@@@@@@@@@@@@@@@                                |
+[2K, 4K)           10763 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+[4K, 8K)             507 |@@                                                  |
+[8K, 16K)             13 |                                                    |
+[16K, 32K)             0 |                                                    |
+[32K, 64K)             0 |                                                    |
+[64K, 128K)            1 |                                                    |
+[128K, 256K)           1 |                                                    |
+[256K, 512K)           3 |                                                    |
+[512K, 1M)             7 |                                                    |
+[1M, 2M)               7 |                                                    |
+[2M, 4M)              18 |                                                    |
+[4M, 8M)              43 |                                                    |
+[8M, 16M)             37 |                                                    |
+```
+
+Latencies this low suggest that all pages were already resident in the Linux page cache, so although we ask the OS for the pages, there is likely no actual disk I/O given these latencies.
+
+So this would suggest that this is mainly a CPU-bound workload, not an IO-bound one.
