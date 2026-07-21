@@ -27,3 +27,15 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 ```
 
 The output shows the enormous difference in run time (from 87.5ms to 0.25ms), along with the vastly reduced number of pages read (12 vs ~43k).
+
+We can also see the reference to our index: `idx_orders_customer_id`.
+
+And for an extra confirmation that the index was used:
+```
+docker exec lab-postgres psql -U postgres -d labdb -c \
+  "SELECT idx_scan, idx_tup_read FROM pg_stat_user_indexes WHERE indexrelname = 'idx_orders_customer_id';"
+ idx_scan | idx_tup_read 
+----------+--------------
+        1 |            9
+(1 row)
+```
