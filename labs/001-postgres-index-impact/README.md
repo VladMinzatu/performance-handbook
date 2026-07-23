@@ -54,4 +54,8 @@ See [Experiments directory](./experiments)
 ```sh
 docker compose -f compose.yml down -v
 ```
+`analysis` can stay running for the next lab or stopped similarly:
 
+```sh
+docker compose -f ../tools/analysis/compose.yml  down -v
+```
