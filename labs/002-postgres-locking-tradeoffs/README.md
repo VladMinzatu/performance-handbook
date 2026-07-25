@@ -1,9 +1,9 @@
 # 002 - Postgres locking tradeoffs: optimistic vs pessimistic
 
-Uses the shared lab infrastructure in [tools/](../tools/README.md) (the
-`analysis` container isn't required for the core lab here - everything is
-observable through plain SQL and `pgbench`. It's only used in the optional
-stretch step.)
+Uses the shared lab infrastructure in [tools/](../tools/README.md) (even 
+if the `analysis` container isn't required for the core lab here, we still 
+need to start it to set up the `labnet` network). But most things here are
+observable through plain SQL and `pgbench`.
 
 ## Background
 
