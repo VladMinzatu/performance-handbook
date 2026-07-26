@@ -102,69 +102,9 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 For pessimistic runs this should equal the transaction count exactly. For
 optimistic runs under contention, it should come in lower - the difference
 is the number of updates that were silently lost.
+## Experiments
 
-## Step 1 - low contention baseline (prediction 1)
-
-Re-seed, then run each script spread across all 1000 rows:
-```sh
-docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
-docker exec lab-postgres pgbench -D range=1000 -D think_time=0.005 \
-  -f /tmp/pessimistic.sql -c 20 -j 4 -T 20 -U postgres labdb
-
-docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
-docker exec lab-postgres pgbench -D range=1000 -D think_time=0.005 \
-  -f /tmp/optimistic.sql -c 20 -j 4 -T 20 -U postgres labdb
-```
-What to check: `tps`/average latency should be broadly similar between the
-two, and `actual_decrement` should match the transaction count for both
-(collisions should be rare with 20 clients spread over 1000 rows).
-
-## Step 2 - high contention (predictions 2 & 3)
-
-Same as Step 1, but `range=1` so every client fights over the same row:
-```sh
-docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
-docker exec lab-postgres pgbench -D range=1 -D think_time=0.005 \
-  -f /tmp/pessimistic.sql -c 20 -j 4 -T 20 -U postgres labdb
-# check actual_decrement - should still match the transaction count exactly
-```
-```sh
-docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
-docker exec lab-postgres pgbench -D range=1 -D think_time=0.005 \
-  -f /tmp/optimistic.sql -c 20 -j 4 -T 20 -U postgres labdb
-# check actual_decrement - expect a real gap vs. the transaction count now
-```
-What to check:
-- Pessimistic: `tps` should drop sharply vs. Step 1, and average latency
-  should rise - clients are now queued behind one lock. `actual_decrement`
-  should still be exact.
-- Optimistic: `tps`/average latency should look almost as good as Step 1
-  (no blocking happened) - but `actual_decrement` should now show a
-  meaningful gap versus the transaction count. That gap, silently, is data
-  loss.
-
-## Step 3 - watching the queue (optional, pessimistic only)
-
-While a high-contention pessimistic run (Step 2) is in progress, sample
-`pg_stat_activity` a couple of times from a second shell to see the queued
-backends directly:
-```sh
-docker exec lab-postgres psql -U postgres -d labdb -c \
-  "SELECT pid, wait_event_type, wait_event, state, query
-   FROM pg_stat_activity
-   WHERE datname = 'labdb' AND wait_event_type = 'Lock';"
-```
-Rows with `wait_event = 'transactionid'` or `'tuple'` are backends blocked
-waiting for the row lock held by whichever backend got there first. This is
-literally where the extra latency from Step 2 goes.
-
-## Step 4 (stretch) - varying think time (prediction 4)
-
-Keep `range=1` (max contention), and repeat Step 2 for both scripts at a
-couple of different `think_time` values (e.g. `0.001`, `0.02`, `0.05`).
-Track, per value: pessimistic's average latency, and optimistic's
-lost-update count (`transactions processed - actual_decrement`). Expect
-both to get worse as `think_time` grows, but along different axes.
+See [Experiments directory](./experiments)
 
 ## Tear down
 
