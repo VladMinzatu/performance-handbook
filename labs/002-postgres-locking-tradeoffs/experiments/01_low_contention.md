@@ -3,6 +3,7 @@
 Re-seed and run the low contention experiment using pessimistic locking:
 ```
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
+
 docker exec lab-postgres pgbench -D range=1000 -D think_time=0.005 \
   -f /tmp/pessimistic.sql -c 20 -j 4 -T 20 -U postgres labdb
 ```
@@ -36,6 +37,7 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 And running the low contention experiment with optimistic locking:
 ```
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
+
 docker exec lab-postgres pgbench -D range=1000 -D think_time=0.005 \
   -f /tmp/optimistic.sql -c 20 -j 4 -T 20 -U postgres labdb
 ```
