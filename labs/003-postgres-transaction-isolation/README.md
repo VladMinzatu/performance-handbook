@@ -26,11 +26,11 @@ The three levels that do differ, from weakest to strongest guarantee:
   couldn't have happened in *any* one-at-a-time ordering - and abortion of
   one of them (with a retryable error) if it finds one.
 
-This directly continues [002-postgres-locking-tradeoffs](../002-postgres-locking-tradeoffs/):
-that lab's optimistic-locking `UPDATE ... WHERE version = :version` silently
-affected 0 rows when it lost a race - under READ COMMITTED. Isolation level
-turns out to be *why* that failure was silent rather than an error, and
-changing it changes the failure mode entirely.
+A common application pattern - optimistic locking via a version column,
+`UPDATE ... WHERE version = :version` - can silently affect 0 rows when it
+loses a race against a concurrent update, under READ COMMITTED. Isolation
+level turns out to be *why* that failure is silent rather than an error,
+and changing it changes the failure mode entirely.
 
 ## Hypotheses
 
@@ -41,13 +41,13 @@ again in the same transaction: under READ COMMITTED, A's second read sees
 B's committed change. Under REPEATABLE READ/SERIALIZABLE, A's second read
 still sees the original value - its snapshot was fixed at the start.
 
-**Prediction 2 - the same lost-update race from lab 002 fails silently
-under READ COMMITTED, but becomes a real, retryable error under
-REPEATABLE READ/SERIALIZABLE.** Re-running lab 002's version-checked
-`UPDATE` race: under READ COMMITTED, Postgres re-evaluates the `WHERE
-version = :version` clause against the latest committed row and just
-finds no match (0 rows affected, no error - the silent lost update we
-measured in 002). Under REPEATABLE READ/SERIALIZABLE, Postgres instead
+**Prediction 2 - a version-checked lost-update race fails silently under
+READ COMMITTED, but becomes a real, retryable error under REPEATABLE
+READ/SERIALIZABLE.** For an optimistic-locking `UPDATE ... WHERE version =
+:version` race between two transactions: under READ COMMITTED, Postgres
+re-evaluates the `WHERE version = :version` clause against the latest
+committed row and just finds no match (0 rows affected, no error - a
+silent lost update). Under REPEATABLE READ/SERIALIZABLE, Postgres instead
 raises `ERROR: could not serialize access due to concurrent update`
 (SQLSTATE `40001`) - the application gets a hard signal that something
 needs to retry, instead of a result that looks like success.
@@ -63,11 +63,11 @@ both commit successfully, leaving nobody on call. Under SERIALIZABLE, one
 of the two gets a serialization failure.
 
 **Prediction 4 (stretch) - stronger isolation trades silent data loss for
-throughput lost to retries.** Running the same high-contention hot-row
-workload from lab 002 under each isolation level should show: READ
-COMMITTED with high throughput and silent lost updates (as already
-measured in 002); REPEATABLE READ/SERIALIZABLE with measurably more
-`40001` errors as contention rises, and lower *effective* (successfully
+throughput lost to retries.** Running a high-contention hot-row workload
+(many clients racing an optimistic-locking `UPDATE` against the same row)
+under each isolation level should show: READ COMMITTED with high
+throughput and silent lost updates; REPEATABLE READ/SERIALIZABLE with
+measurably more `40001` errors as contention rises, and lower *effective* (successfully
 committed) throughput once retries are accounted for - the cost of
 correctness shows up as wasted, retried work rather than as blocking.
 
@@ -78,9 +78,9 @@ Start Postgres for this lab:
 docker compose -f compose.yml up -d
 ```
 
-Load the seed data - a single-row `accounts` table (reusing lab 002's
-shape) for the non-repeatable-read/lost-update demos, and a two-row
-`doctors` table for the write-skew demo:
+Load the seed data - a single-row `accounts` table (with a `version`
+column for the optimistic-locking pattern) for the non-repeatable-read/
+lost-update demos, and a two-row `doctors` table for the write-skew demo:
 ```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 ```
@@ -131,8 +131,9 @@ A: UPDATE accounts SET balance = balance - 100, version = version + 1
 A: COMMIT;
 ```
 What to check: A's `UPDATE` reports `UPDATE 0` - no error, silently
-nothing happens. This is exactly what lab 002 measured as a gap between
-transactions processed and actual balance change.
+nothing happens. Under load, this is exactly the kind of gap that shows up
+between transactions processed and actual balance change - a lost update
+that looks like success.
 
 Re-seed, then repeat with both sessions starting
 `BEGIN ISOLATION LEVEL REPEATABLE READ;` instead of `BEGIN;`. What to
@@ -164,18 +165,27 @@ serialization error; the invariant survives.
 
 ## Step 4 (stretch) - quantifying the retry cost (prediction 4)
 
-Reuse lab 002's high-contention `pgbench` setup (`hot_accounts`,
-`optimistic.sql`, `range=1`) against this lab's database, running the same
-workload three times with the database's default isolation level changed
-between runs:
+Drive concurrent load against the single `accounts` row with a small
+`pgbench` script, e.g. `race.sql`:
+```sql
+SELECT version FROM accounts WHERE id = 1 \gset
+UPDATE accounts SET balance = balance - 1, version = version + 1
+WHERE id = 1 AND version = :version;
+```
+Run it with many concurrent clients, once per isolation level, re-seeding
+and switching the database's default isolation level between runs:
 ```sh
+docker cp race.sql lab-postgres:/tmp/race.sql
+
+docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "ALTER DATABASE labdb SET default_transaction_isolation = 'read committed';"
-# (repeat the pgbench run from 002's Step 2, optimistic, range=1)
+docker exec lab-postgres pgbench -n -f /tmp/race.sql -c 20 -j 4 -T 20 -U postgres labdb
 
+docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "ALTER DATABASE labdb SET default_transaction_isolation = 'repeatable read';"
-# (same pgbench run again)
+docker exec lab-postgres pgbench -n -f /tmp/race.sql -c 20 -j 4 -T 20 -U postgres labdb
 ```
 What to check: `pgbench`'s `number of failed transactions` should go from
 ~0 (READ COMMITTED - failures don't exist, updates just silently no-op) to

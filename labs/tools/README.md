@@ -21,9 +21,8 @@ a real Linux box, without needing a separate manually-managed VM.
   experiment's "system under test" (Postgres, an app under load, etc) joins
   this network as `external`, so the analysis container can reach it by
   service name.
-- **Per-experiment `compose.yml`** - each experiment directory (e.g.
-  `labs/001-postgres-index-impact/`) defines only the system under test. See
-  `examples/postgres/compose.yml` for the template.
+- **Per-experiment `compose.yml`** - each experiment directory defines only 
+the system under test. See `examples/postgres/compose.yml` for the template.
 
 The analysis image is deliberately just the "outside observer" - tracing,
 profiling, load generation. Language runtimes or app code being studied
