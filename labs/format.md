@@ -16,10 +16,13 @@ Backlog:
 - Memory
 - Storage
 - Networking and protocols
+  - connection pooling in different runtimes
 - Concurrency & Synchronization
 - Virtualization
 - Containers & cgroup
 - Databases
+  - PG N+1 queries vs. batching — comparing N round-trip SELECTs against one batched query (WHERE id = ANY(...) or a JOIN).
+  - PG: Connection overhead / pooling (raw connections vs PgBouncer) — measures per-request connection setup cost and how pooling changes throughput under bursty load,
 - Language runtimes and GC
 - GPUs / accelerators
 - Compilers
