@@ -85,7 +85,7 @@ lost-update demos, and a two-row `doctors` table for the write-skew demo:
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 ```
 
-These demos are about a *specific interleaving* of statements across two
+The experiments are about a *specific interleaving* of statements across two
 concurrent transactions, so they need two separate sessions kept open at
 the same time rather than a single scripted benchmark. Open two terminals,
 each with its own `psql` session:
