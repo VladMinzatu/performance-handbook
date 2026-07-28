@@ -31,7 +31,7 @@ belong in that experiment's own service/image, not in the analysis image.
 ## One-time setup
 
 ```sh
-docker compose -f labs/tools/analysis/compose.yml up -d --build
+docker compose -f analysis/compose.yml up -d --build
 ```
 
 This builds the image, creates the `labnet` network, and starts
@@ -43,11 +43,11 @@ Dockerfile.
 
 1. Start the system under test, joined to `labnet`:
    ```sh
-   docker compose -f labs/tools/examples/postgres/compose.yml up -d
+   docker compose -f examples/postgres/compose.yml up -d
    ```
 2. Get a shell in the analysis container:
    ```sh
-   docker compose -f labs/tools/analysis/compose.yml exec analysis bash
+   docker compose -f analysis/compose.yml exec analysis bash
    ```
    The repo root is mounted at `/workspace`, so scripts and captured results
    land back on your Mac.
@@ -70,7 +70,7 @@ Dockerfile.
 4. Tear down the system under test when done; leave `analysis` running for
    the next experiment:
    ```sh
-   docker compose -f labs/tools/examples/postgres/compose.yml down
+   docker compose -f examples/postgres/compose.yml down
    ```
 
 ## Notes / tradeoffs
