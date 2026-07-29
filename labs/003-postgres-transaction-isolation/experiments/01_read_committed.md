@@ -1,4 +1,9 @@
-## Non Repeatable Reads
+## Read Committed isolation
+
+With the data freshly seeded:
+```
+docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
+```
 
 We are checking the behavior of the READ COMMITTED (default) isolation level. With our two sessions A and B (set up as described in the setup steps) we run the following sequence of statements:
 ```
