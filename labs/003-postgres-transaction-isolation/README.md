@@ -93,7 +93,9 @@ each with its own `psql` session:
 docker exec -it lab-postgres psql -U postgres -d labdb   # Session A
 docker exec -it lab-postgres psql -U postgres -d labdb   # Session B
 ```
+## Experiments
 
+See [Experiments directory](./experiments)
 
 ## Tear down
 

@@ -102,6 +102,7 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 For pessimistic runs this should equal the transaction count exactly. For
 optimistic runs under contention, it should come in lower - the difference
 is the number of updates that were silently lost.
+
 ## Experiments
 
 See [Experiments directory](./experiments)
