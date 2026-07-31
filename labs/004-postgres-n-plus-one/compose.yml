@@ -4,6 +4,10 @@ services:
   postgres:
     image: postgres:16
     container_name: lab-postgres
+    # pg_stat_statements needs to be loaded at server start (not just
+    # `CREATE EXTENSION`'d) to actually track anything - see the detection
+    # step in the README.
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: labdb
