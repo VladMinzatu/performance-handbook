@@ -141,69 +141,9 @@ docker compose -f ../tools/analysis/compose.yml exec -T analysis \
   nsenter --net=/proc/$PG_PID/ns/net -- tc qdisc del dev lo root netem
 ```
 
-## Step 5 - detecting it from inside the database (prediction 5)
+## Experiments
 
-Reset stats, re-run the N+1 script and the batched query from Step 1, then
-look at what got tracked:
-```sh
-docker exec lab-postgres psql -U postgres -d labdb -c \
-  "SELECT pg_stat_statements_reset();"
-
-docker exec -i lab-postgres psql -U postgres -d labdb -o /dev/null \
-  -f /tmp/n_plus_one.sql
-
-docker exec lab-postgres psql -U postgres -d labdb -o /dev/null -c \
-  "SELECT * FROM books WHERE author_id = ANY(ARRAY[$IDS]);"
-
-docker exec lab-postgres psql -U postgres -d labdb -c \
-  "SELECT query, calls, mean_exec_time, rows
-   FROM pg_stat_statements
-   WHERE query ILIKE '%books%'
-   ORDER BY calls DESC;"
-```
-What to check: the 100 individual lookups, despite each having a
-*different* literal `author_id`, all collapse into a **single row** -
-`SELECT * FROM books WHERE author_id = $1` - because Postgres normalizes
-out literal constants before tracking. That row's `calls` should read
-~100; the `ANY(...)` query's row should read `calls = 1`. This is the
-same signal a real production investigation would look for: one
-normalized query with a suspiciously large `calls` count (often a
-multiple of some other query's `calls` - "called once per row of
-whatever that other query returned" is the N+1 tell), found without
-looking at a single line of application code.
-
-## Step 6 - confirming it from outside, at the syscall level (prediction 5)
-
-`pg_stat_statements` needs database access and query-text visibility.
-This step gets the same answer with neither - by counting the actual
-network round trips a client process makes, treating both the app and the
-database as a black box.
-
-Give the traced script a moment's head start so there's time to attach
-before the real work happens:
-```sh
-(echo "SELECT pg_sleep(0.5);"; cat /tmp/n_plus_one.sql) > /tmp/n_plus_one_delayed.sql
-docker cp /tmp/n_plus_one_delayed.sql lab-postgres:/tmp/n_plus_one_delayed.sql
-
-docker exec lab-postgres psql -U postgres -d labdb -o /dev/null \
-  -f /tmp/n_plus_one_delayed.sql &
-
-sleep 0.2
-PSQL_PID=$(docker top lab-postgres -eo pid,comm | awk '/psql/ {print $1}')
-docker compose -f ../tools/analysis/compose.yml exec -T analysis \
-  strace -c -e trace=network -p "$PSQL_PID"
-wait
-```
-(`docker top` reports host-visible PIDs directly, so no PID-namespace
-translation is needed to hand `$PSQL_PID` to `strace` running in a
-different container.) Repeat the same recipe for the batched query
-(prefix its `-c` query with a `SELECT pg_sleep(0.5);` via a small wrapper
-script, same idea).
-
-What to check: `strace -c`'s summary table should show roughly 100
-`sendto`/`recvfrom` pairs for the N+1 script and ~1 pair for the batched
-query - the same N-vs-1 signature as Step 5, but derived purely from
-watching sockets, with zero insight into what the queries actually say.
+See [Experiments directory](./experiments)
 
 ## Tear down
 
