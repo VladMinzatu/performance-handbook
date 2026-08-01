@@ -33,50 +33,50 @@ The two standard fixes both replace N round trips with one:
 
 ## Hypotheses
 
-**Prediction 1 - batching wins even on localhost.** Fetching the same
-books for the same 100 authors should take noticeably longer as 100
-individual `SELECT ... WHERE author_id = $1` round trips than as one
-`SELECT ... WHERE author_id = ANY(...)` round trip, even with negligible
-network latency - because each round trip carries fixed overhead
-(protocol framing, a context switch, planning) independent of how little
-data it returns.
+**Prediction 1 - batching wins, and realistic network latency makes the
+gap dramatic.** With a small amount of round-trip latency injected between
+client and database (standing in for a real network, rather than the
+near-zero latency of talking to `localhost`), fetching the same books for
+the same 100 authors as 100 individual `SELECT ... WHERE author_id = $1`
+round trips should cost far more wall-clock time than fetching them as one
+`SELECT ... WHERE author_id = ANY(...)` round trip - multiplied by roughly
+N x the injected latency, since every one of the N round trips pays it,
+not just one. Without any injected latency the same comparison should
+still favor batching (each round trip carries some fixed protocol/context-
+switch overhead regardless of network delay), but that gap is expected to
+be far less dramatic - this lab's setup always runs with latency injected,
+so that plain-localhost case is an inference from the mechanism, not
+something separately measured here.
 
 **Prediction 2 - the gap scales with N, in different ways for each
 approach.** Repeating Prediction 1's comparison at increasing N (e.g. 10,
 100, 1000) should show the N+1 approach's wall-clock time growing
-roughly linearly with N (each additional parent adds one more fixed-cost
-round trip), while the batched approach's time stays close to flat
-(still one round trip, just a bigger result set).
+roughly linearly with N (each additional parent adds one more fixed-cost,
+latency-multiplied round trip), while the batched approach's time stays
+close to flat (still one round trip, just a bigger result set).
 
-**Prediction 3 - JOIN-based batching moves more bytes than
-`ANY()`-based batching.** Both fixes solve the round-trip problem, but a
-JOIN repeats every parent column on every one of its child rows. For
-authors with 10 books each, a JOIN result duplicates each author's `name`
-and `bio` 10 times over; a separate `WHERE author_id = ANY(...)` query
-against just the `books` table returns each book's row and nothing else,
-with parent data grouped in afterward on the client. The difference in
-bytes returned should be measurable and should grow with how many
-children each parent has and how wide the parent row is.
-
-**Prediction 4 (stretch) - the whole story gets dramatically worse under
-realistic network latency.** Repeating Prediction 1/2 with a few
-milliseconds of artificial latency injected between client and database
-should show the N+1 approach's cost multiply by roughly N x (added
-latency), while the batched approach barely moves (still one round trip).
-This is the mechanism behind why N+1 bugs are so easy to ship: they're
-nearly free on a local dev database and expensive the moment a real
-network sits in between.
-
-**Prediction 5 - N+1 has a distinctive, detectable signature at two
+**Prediction 3 - N+1 has a distinctive, detectable signature at two
 different layers, without needing to read application code.** Inside the
 database, `pg_stat_statements` normalizes literal values out of query
 text, so all N individual `author_id = $i` lookups collapse into a
 *single* tracked entry with an outsized `calls` count - directly visible
-without touching the app. Entirely outside the database, counting the
-number of socket round trips (`sendto`/`recvfrom` pairs) a client process
-makes for one logical operation gives the same signal even with zero
-visibility into query text at all: N+1 shows up as N round trips,
-batching as 1, regardless of what the queries actually say.
+without touching the app. Entirely outside the database, attaching to the
+client library's query-send function (a uprobe on `libpq`'s
+`PQsendQuery`) surfaces the same repeated-query-shape signature *plus*
+exact timing - a tight burst of near-identical calls with no gap between
+them for application "think time" - without any visibility into the
+database or the application's source at all.
+
+**Prediction 4 - a detected pattern can be confirmed as genuine
+round-trip overhead, not just repeated calls, by counting the actual
+network syscalls involved.** Once Prediction 4 has flagged a suspicious
+query pattern, attaching `strace` to the already-running client process
+and counting `sendto`/`recvfrom` calls should show a 1:1 ratio between
+"number of times this query was called" and "number of separate network
+round trips" - proving each call really did hit the network on its own,
+rather than being pipelined or coalesced by the client library, and
+turning "this looks suspicious" into a hard, measured number of wasted
+round trips.
 
 ## Setup
 
