@@ -133,6 +133,7 @@ docker exec -e PGPASSWORD=postgres lab-postgres psql -h 127.0.0.1 -U postgres -d
   -o /dev/null -f /tmp/n_plus_one.sql
 ``` 
 
+**Note**: The `eth0` is the right interface if the client runs outside this container —  e.g. from the analysis container or the host, hitting the exposed 5432 port over the real labnet bridge network. That's arguably a more realistic setup But since we're running the client via docker exec into the same container, the lo + -h 127.0.0.1 setup is the quick path.
 
 To remove the injected latency afterward:
 ```sh
