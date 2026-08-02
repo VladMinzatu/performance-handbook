@@ -108,31 +108,6 @@ To start an interactive terminal (not via pgbouncer):
 docker exec -it lab-postgres psql -U postgres -d labdb
 ```
 
-## Step 1 - connection setup cost in isolation (prediction 1)
-
-```sh
-docker exec lab-postgres psql -U postgres -d labdb -c '\timing' -c 'SELECT 1;'
-```
-compared against timing just the query on an already-open session (open
-one interactive session, run `\timing`, then `SELECT 1;` a few times in a
-row - the first may still show setup cost, subsequent ones shouldn't).
-What to check: the one-shot invocation's total time versus the warmed-up
-session's per-query time - the difference is connection overhead, not
-query time, since the query is identical in both cases.
-
-## Step 2 - connect-per-transaction vs. persistent, throughput (prediction 2)
-
-```sh
-# persistent connections (pgbench's default - connect once, reuse)
-docker exec lab-postgres pgbench -n -c 10 -j 4 -T 10 -f /tmp/select1.sql -U postgres labdb
-
-# connect-per-transaction
-docker exec lab-postgres pgbench -n -C -c 10 -j 4 -T 10 -f /tmp/select1.sql -U postgres labdb
-```
-What to check: `tps` for both. Both point at Postgres directly, at a
-concurrency (10) comfortably under `max_connections` (30), so this isolates
-connection-churn cost by itself, with no contention effects mixed in.
-
 ## Step 3 - pooling recovers throughput (prediction 3)
 
 Same connect-per-transaction workload as Step 2, this time through

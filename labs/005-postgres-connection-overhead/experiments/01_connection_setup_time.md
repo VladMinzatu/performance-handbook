@@ -41,4 +41,9 @@ average connection time = 1.180 ms
 tps = 3369.004756 (including reconnection times)
 ```
 
-The effect on the average latency and throughput are clear: orders of magnitude difference!
+The effect on the average latency and throughput are clear. But what matters is the constant overhead: the size of this gap is workload-dependent in a specific way: connection setup is a fixed additive cost, not a multiplier. With SELECT 1 (~free), that fixed cost is nearly the entire transaction, which is why the gap is so dramatic (~175x). If the query itself took, say, 50ms, the same fixed connection tax would shrink to a modest percentage overhead rather than a 175x cliff.
+
+Note: Without `-C`, each of pgbench's -c clients opens one connection at the start and reuses it for every transaction over the whole -T duration — connection cost is paid once and amortized across potentially tens of thousands of transactions, which is why it barely shows up in the persistent run's tps. With -C, every single transaction gets its own fresh connect-auth-fork-query-disconnect cycle — it's pgbench's purpose-built way to simulate the "no pooling, no reuse" antipattern.
+
+Note 2: The concurrency (10) is comfortably under `max_connections` (30), so this isolates
+connection-churn cost by itself, with no contention effects mixed in.
