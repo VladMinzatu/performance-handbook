@@ -103,6 +103,11 @@ password supplied explicitly:
 docker exec -e PGPASSWORD=postgres lab-postgres psql -h lab-pgbouncer -p 6432 -U postgres -d labdb -c "SELECT 1;"
 ```
 
+To start an interactive terminal (not via pgbouncer):
+```
+docker exec -it lab-postgres psql -U postgres -d labdb
+```
+
 ## Step 1 - connection setup cost in isolation (prediction 1)
 
 ```sh
