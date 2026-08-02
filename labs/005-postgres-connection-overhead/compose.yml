@@ -1,0 +1,51 @@
+# System under test for lab 005. Joins the external `labnet` network created
+# by labs/tools/analysis/compose.yml so the analysis container can reach it.
+#
+# Two services this time: Postgres itself, and PgBouncer sitting in front of
+# it. `max_connections` is deliberately lowered so a connection burst is easy
+# to trigger without needing hundreds of concurrent clients.
+services:
+  postgres:
+    image: postgres:16
+    container_name: lab-postgres
+    command: ["postgres", "-c", "max_connections=30"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: labdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - labnet
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: lab-pgbouncer
+    environment:
+      # AUTH_TYPE must be scram-sha-256 (not trust/md5) - Postgres here only
+      # accepts scram-sha-256 over TCP (the default once POSTGRES_PASSWORD is
+      # set), and PgBouncer needs to speak the same thing on both sides:
+      # to clients connecting to it, and to Postgres on their behalf.
+      DATABASE_URL: "postgres://postgres:postgres@lab-postgres:5432/labdb"
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      LISTEN_PORT: 6432
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+      ADMIN_USERS: postgres
+      LOG_CONNECTIONS: 1
+      LOG_DISCONNECTIONS: 1
+    ports:
+      - "6432:6432"
+    networks:
+      - labnet
+    depends_on:
+      - postgres
+
+networks:
+  labnet:
+    external: true
+
+volumes:
+  pgdata:
