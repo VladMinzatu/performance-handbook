@@ -108,62 +108,9 @@ To start an interactive terminal (not via pgbouncer):
 docker exec -it lab-postgres psql -U postgres -d labdb
 ```
 
-## Step 3 - pooling recovers throughput (prediction 3)
+## Experiments
 
-Same connect-per-transaction workload as Step 2, this time through
-PgBouncer:
-```sh
-docker exec -e PGPASSWORD=postgres lab-postgres pgbench -n -C -c 10 -j 4 -T 10 \
-  -h lab-pgbouncer -p 6432 -f /tmp/select1.sql -U postgres labdb
-```
-What to check: `tps` here versus Step 2's direct connect-per-transaction
-number - expect most (not all - PgBouncer adds its own small proxying
-overhead) of the gap from Step 2 to close, with no code/query changes at
-all, only the connection target.
-
-## Step 4 - bursty traffic: rejection vs. graceful degradation (prediction 4)
-
-A burst of concurrent connect-per-transaction clients past
-`max_connections=30`, direct to Postgres:
-```sh
-docker exec lab-postgres pgbench -n -C -c 40 -j 8 -T 5 -f /tmp/select1.sql -U postgres labdb
-```
-What to check: expect `pgbench` to abort with
-`FATAL: sorry, too many clients already` partway through - a hard failure,
-not a slowdown.
-
-The identical burst through PgBouncer:
-```sh
-docker exec -e PGPASSWORD=postgres lab-postgres pgbench -n -C -c 40 -j 8 -T 5 \
-  -h lab-pgbouncer -p 6432 -f /tmp/select1.sql -U postgres labdb
-```
-What to check: this run should complete without errors - higher latency
-than Step 3 (clients now queue for one of the pool's 20 backend slots
-under this heavier load) but no rejections, unlike the direct case.
-
-## Step 5 (stretch) - watching backend forks at the OS level (prediction 5)
-
-From the `analysis` container, trace new backend processes being spawned
-by the postmaster while re-running Step 2's connect-per-transaction burst
-directly, then Step 4's burst through PgBouncer:
-```sh
-PG_PID=$(docker inspect -f '{{.State.Pid}}' lab-postgres)
-docker compose -f ../tools/analysis/compose.yml exec -T analysis bash -c "
-  bpftrace -e '
-    tracepoint:sched:sched_process_fork
-    /comm == \"postgres\"/
-    { @forks = count(); }
-    interval:s:1 { print(@forks); clear(@forks); }
-    interval:s:12 { exit(); }
-  '
-"
-```
-(run the direct and pooled traffic in a second shell while this is
-running). What to check: a fork count roughly tracking the direct run's
-transaction rate, versus a much lower, flatter fork count while the same
-client-side load goes through PgBouncer - the same backend processes are
-being reused across many client "connections" instead of one fork per
-connection.
+See [Experiments directory](./experiments)
 
 ## Tear down
 
