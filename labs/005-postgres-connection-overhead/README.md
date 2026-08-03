@@ -1,4 +1,4 @@
-# 005 - Postgres connection overhead and pooling
+# 005 - Postgres connection overhead
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md). The
 `analysis` container is only needed for the optional OS-level stretch step
@@ -23,57 +23,37 @@ per unit of work - a naive script, a serverless function with no warm
 pool, or a misconfigured application-level pool that's sized too small or
 recycles connections too aggressively.
 
-The standard fix is a connection pooler sitting in front of Postgres -
-here, [PgBouncer](https://www.pgbouncer.org/) in `transaction` pooling
-mode, which hands a real Postgres backend connection to a client only for
-the duration of one transaction, then returns it to the pool for the next
-client. From the application's point of view it still "connects" for every
-unit of work; from Postgres's point of view, the actual backend processes
-stay few, warm, and reused.
-
 ## Hypotheses
 
-**Prediction 1 - connection setup is a real, fixed, measurable cost,
-separate from query execution.** Running a trivial `SELECT 1` on a brand
-new connection should take noticeably longer, wall-clock, than running the
-same query on an already-open session - and that gap should track with
-connection setup specifically (TCP + auth + backend fork), not anything
-query-related, since the query itself does effectively no work either way.
+**Prediction 1 - connection setup is a real, fixed cost that dominates
+throughput for connect-per-operation workloads, even for trivial
+queries.** `pgbench`'s `-C` mode (open a fresh connection for every
+transaction) running nothing but `SELECT 1` should show dramatically
+lower `tps` than the same script run over persistent, reused connections
+(`pgbench`'s default) - despite the SQL work being identical and
+negligible in both cases. If the gap is large even for a query this
+trivial, it's entirely attributable to connection overhead (TCP/socket
+setup, auth, backend fork), not anything happening inside Postgres's
+executor. Note this needs a throughput-based comparison to show up at
+all: timing a single query with `psql`'s `\timing` on a fresh connection
+looks no different from timing one on an already-open session, because
+`\timing` only measures the query's own round trip *after* the connection
+already exists - it structurally can't see connection setup, no matter
+how it's invoked.
 
-**Prediction 2 - this fixed cost dominates throughput for connect-per-
-operation workloads, even for trivial queries.** `pgbench`'s `-C` mode
-(open a fresh connection for every transaction) running nothing but
-`SELECT 1` should show dramatically lower `tps` than the same script run
-over persistent, reused connections (`pgbench`'s default) - despite the
-SQL work being identical and negligible in both cases. If this gap is
-large even for a query this trivial, it's entirely attributable to
-connection overhead, not anything happening inside Postgres's executor.
-
-**Prediction 3 - a pooler recovers most of that lost throughput, with no
-application changes.** Repeating Prediction 2's connect-per-transaction
-workload, but pointed at PgBouncer instead of Postgres directly, should
-recover a large fraction of the lost throughput - because PgBouncer
-absorbs the client-visible "new connection" cheaply (it's already holding
-warm backend connections open) even though the client still believes it's
-opening a fresh connection every time.
-
-**Prediction 4 - direct connections fail hard under a connection burst
-past `max_connections`; pooled connections degrade instead.** Firing a
-sudden burst of concurrent connect-per-transaction clients that exceeds
-Postgres's configured `max_connections` directly at Postgres should
-produce outright rejections (`sorry, too many clients already`) for the
-excess. The identical burst aimed at PgBouncer - configured with a much
-higher client-facing limit but a small, fixed number of real backend
-connections - should be absorbed instead: requests queue for a moment
-waiting for a pooled backend, but nothing gets rejected.
-
-**Prediction 5 (stretch) - the backend-fork mechanism behind all of this
-is directly observable at the OS level.** Tracing process-fork events on
-the Postgres postmaster should show roughly one new backend process per
-connection for direct, connect-per-transaction traffic, but a much lower,
-decoupled rate for the same client-side load routed through PgBouncer in
-transaction-pooling mode - since a small, fixed set of already-forked
-backends is being shared and reused rather than spun up fresh each time.
+**Prediction 2 - the mechanism behind that cost is directly observable,
+and quantifiable, at the OS level.** Postgres forks one backend process
+per connection, and that should show up plainly in kernel-level tracing:
+a `sched_process_fork` count that tracks one-per-client for persistent
+connections but thousands-per-second for connect-per-transaction traffic;
+a real fork-to-ready latency (timestamping the fork and pairing it with
+the return of the backend's own initialization routine) that should land
+in the same ballpark as `pgbench`'s self-reported connection time,
+confirming the two independent measurements agree; and, without needing
+any Postgres symbols or internals at all, a plain `accept()` syscall rate
+on the postmaster's listening socket that shows the same pattern - a
+signal that would work purely as a "something's wrong here" alarm,
+without knowing in advance that connection churn is the cause.
 
 ## Setup
 
