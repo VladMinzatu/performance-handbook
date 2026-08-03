@@ -1,7 +1,7 @@
 ## High Contention
 
 Re-seed and run the high contention experiment using pessimistic locking (range parameter is 1 now instead of 1000):
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 
 docker exec lab-postgres pgbench -D range=1 -D think_time=0.005 \
@@ -9,7 +9,7 @@ docker exec lab-postgres pgbench -D range=1 -D think_time=0.005 \
 ```
 
 producing the output:
-```
+```sh
 transaction type: /tmp/pessimistic.sql
 scaling factor: 1
 query mode: simple
@@ -25,7 +25,7 @@ tps = 100.923689 (without initial connection time)
 ```
 
 And the actual decrement:
-```
+```sh
  docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT 1000 * 1000000 - SUM(balance) AS actual_decrement FROM hot_accounts;"
  actual_decrement 
@@ -35,7 +35,7 @@ And the actual decrement:
 ```
 
 And running the high contention experiment with optimistic locking:
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 
 docker exec lab-postgres pgbench -D range=1 -D think_time=0.005 \
@@ -43,7 +43,7 @@ docker exec lab-postgres pgbench -D range=1 -D think_time=0.005 \
 ```
 
 producing the output:
-```
+```sh
 transaction type: /tmp/optimistic.sql
 scaling factor: 1
 query mode: simple
@@ -59,7 +59,7 @@ tps = 2884.058653 (without initial connection time)
 ```
 
 And the actual decrement:
-```
+```sh
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT 1000 * 1000000 - SUM(balance) AS actual_decrement FROM hot_accounts;"
  actual_decrement 
@@ -74,7 +74,7 @@ The pessimistic locking version, on the other hand, has much lower throughput an
 
 
 We can also sample the pg_stat_activity to check the locking behaviour during these runs:
-```
+```sh
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT pid, wait_event_type, wait_event, state, query
    FROM pg_stat_activity
@@ -82,7 +82,7 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 ```
 
 During the pessimistic locking run we get:
-```
+```sh
 pid  | wait_event_type |  wait_event   | state  |                           query                           
 ------+-----------------+---------------+--------+-----------------------------------------------------------
  1986 | Lock            | tuple         | active | SELECT balance FROM hot_accounts WHERE id = 1 FOR UPDATE;
@@ -110,7 +110,7 @@ pid  | wait_event_type |  wait_event   | state  |                           quer
 We can see the the one backend parked waiting on the current transaction to finish, with another 18 queuing up behind it, contending for the brief per-tuple lock just to register themselves as a waiter. Once the transaction is in, though, it is guaranteed to succeed.
 
 In the optimistic case, we just sometimes see something like this:
-```
+```sh
  pid  | wait_event_type |  wait_event   | state  |                                query                                 
 ------+-----------------+---------------+--------+----------------------------------------------------------------------
  2036 | Lock            | transactionid | active | UPDATE hot_accounts SET balance = balance - 1, version = version + 1+

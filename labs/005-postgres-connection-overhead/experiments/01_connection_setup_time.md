@@ -1,7 +1,7 @@
 ## Connection setup time
 
 Let's run `pgbench` with a persistent connection:
-```
+```sh
 # persistent connections (pgbench's default - connect once, reuse)
 docker exec lab-postgres pgbench -n -c 10 -j 4 -T 10 -f /tmp/select1.sql -U postgres labdb
 
@@ -22,7 +22,7 @@ tps = 447883.979069 (without initial connection time)
 
 
 Then rerun with one connection per transaction:
-```
+```sh
 # connect-per-transaction
 docker exec lab-postgres pgbench -n -C -c 10 -j 4 -T 10 -f /tmp/select1.sql -U postgres labdb
 

@@ -3,13 +3,13 @@
 ### From inside the db
 
 First, reset the stats:
-```
+```sh
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT pg_stat_statements_reset();"
 ```
 
 Next, we can run both versions of the query:
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb -o /dev/null \
   -f /tmp/n_plus_one.sql
 
@@ -18,7 +18,7 @@ docker exec lab-postgres psql -U postgres -d labdb -o /dev/null -c \
 ```
 
 Next, check the stats:
-```
+```sh
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT query, calls, mean_exec_time, rows
    FROM pg_stat_statements
@@ -41,7 +41,7 @@ This is the signal a real production investigation would look for: one normalize
 `pg_stat_statements` still needs database access. We can get the same signal - and more of it - from completely outside the app and the database, by attaching to `PQsendQuery`, the `libpq` function `psql` calls to issue each query. It's a public, exported function of a shared library, so it's always present in the dynamic symbol table, unlike arbitrary internal functions that may or may not survive stripping.
 
 First, find the library and the Postgres container's PID (needed to reach its filesystem from the `analysis` container):
-```
+```sh
 docker exec lab-postgres bash -c "find / -name 'libpq.so*' 2>/dev/null"
 /usr/lib/aarch64-linux-gnu/libpq.so.5
 /usr/lib/aarch64-linux-gnu/libpq.so.5.18
@@ -50,7 +50,7 @@ PG_PID=$(docker inspect -f '{{.State.Pid}}' lab-postgres)
 ```
 
 Then attach the uprobe from the `analysis` container, printing a timestamp and the actual query text for every call:
-```
+```sh
 docker compose -f ../tools/analysis/compose.yml exec -T analysis bash -c "
   bpftrace -e '
     uprobe:/proc/${PG_PID}/root/usr/lib/aarch64-linux-gnu/libpq.so.5:PQsendQuery
@@ -63,12 +63,12 @@ docker compose -f ../tools/analysis/compose.yml exec -T analysis bash -c "
 ```
 
 Trigger the N+1 script while that's running:
-```
+```sh
 docker exec lab-postgres psql -U postgres -d labdb -o /dev/null -f /tmp/n_plus_one.sql
 ```
 
 producing (100 lines total, first few and last shown):
-```
+```sh
 08:43:50.513026 pid=17012 query=SELECT * FROM books WHERE author_id = 1;
 08:43:50.514093 pid=17012 query=SELECT * FROM books WHERE author_id = 2;
 08:43:50.514171 pid=17012 query=SELECT * FROM books WHERE author_id = 3;

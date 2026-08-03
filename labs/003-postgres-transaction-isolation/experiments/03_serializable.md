@@ -1,12 +1,12 @@
 ## Serializable isolation
 
 With the data freshly seeded:
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 ```
 
 and let's run the following sequence:
-```
+```sh
 A: BEGIN ISOLATION LEVEL REPEATABLE READ;
 B: BEGIN ISOLATION LEVEL REPEATABLE READ;
 A: SELECT count(*) FROM doctors WHERE on_call AND id != 1;  -- 1 (Bob)
@@ -20,12 +20,12 @@ B: COMMIT;
 Although each transaction attempted to set one of the doctors off call while first checking that someone else was on call, we left our database in the undersirable state that nobody is on call. The isolation level in combination with our transaction logic did not work as intended.
 
 But we can achieve the desired behavior by using the SERIALIZABLE isolation level. First reseed:
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 ```
 
 then:
-```
+```sh
 A: BEGIN ISOLATION LEVEL SERIALIZABLE;
 B: BEGIN ISOLATION LEVEL SERIALIZABLE;
 A: SELECT count(*) FROM doctors WHERE on_call AND id != 1;  -- 1 (Bob)

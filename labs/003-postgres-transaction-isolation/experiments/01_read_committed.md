@@ -1,12 +1,12 @@
 ## Read Committed isolation
 
 With the data freshly seeded:
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 ```
 
 We are checking the behavior of the READ COMMITTED (default) isolation level. With our two sessions A and B (set up as described in the setup steps) we run the following sequence of statements:
-```
+```sh
 A: BEGIN;
 A: SELECT balance FROM accounts WHERE id = 1;        -- 1000
 B: UPDATE accounts SET balance = 500 WHERE id = 1;
@@ -18,7 +18,7 @@ A's second read return 500, reflecting the update from B. As expected, A sees th
 
 Note that B's statement autocommits (single statement). If B were still in the middle of a transaction when A's second statement ran, then B's change would not be visible to A even under this isolation level.
 
-```
+```sh
 A: BEGIN;
 A: SELECT balance FROM accounts WHERE id = 1;        -- 1000
 B: BEGIN;

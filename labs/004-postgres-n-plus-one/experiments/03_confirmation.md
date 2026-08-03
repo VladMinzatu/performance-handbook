@@ -12,7 +12,7 @@ the running client process and count the actual network syscalls.
 
 Give the traced script a moment's head start so there's time to attach
 before the real work happens:
-```
+```sh
 (echo "SELECT pg_sleep(0.5);"; cat /tmp/n_plus_one.sql) > /tmp/n_plus_one_delayed.sql
 docker cp /tmp/n_plus_one_delayed.sql lab-postgres:/tmp/n_plus_one_delayed.sql
 
@@ -29,7 +29,7 @@ the `analysis` container can attach to it with no PID-namespace
 translation needed.)
 
 producing:
-```
+```sh
 strace: Process 16501 attached
 % time     seconds  usecs/call     calls    errors syscall
 ------ ----------- ----------- --------- --------- ----------------
@@ -42,7 +42,7 @@ strace: Process 16501 attached
 Same recipe, batched query instead (`SELECT pg_sleep(0.5);` followed by
 `SELECT * FROM books WHERE author_id = ANY(ARRAY[$IDS]);` in the delayed
 script):
-```
+```sh
 strace: Process 16552 attached
 % time     seconds  usecs/call     calls    errors syscall
 ------ ----------- ----------- --------- --------- ----------------

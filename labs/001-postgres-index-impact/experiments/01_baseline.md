@@ -1,12 +1,12 @@
 ## Baseline
 
 Following the setup steps in the `../README.md`, we will use the following customer id from the db for testing:
-```
+```sh
 CID=313952
 ```
 
 Running a query for our specific customer id produces the following output:
-```
+```sh
  $ docker exec lab-postgres psql -U postgres -d labdb -c \
   "EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM orders WHERE customer_id = $CID;"
                                                       QUERY PLAN                                                      
@@ -34,7 +34,7 @@ Main points to note here:
 - That's a total of ~43k * 8KB pages ≈ 336MB touched — confirming the whole table read to return 9 rows.
 
 And for an extra confirmation of no index used:
-```
+```sh
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT seq_scan, seq_tup_read, idx_scan FROM pg_stat_user_tables WHERE relname = 'orders';"
  seq_scan | seq_tup_read | idx_scan 
@@ -43,7 +43,7 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 ```
 
 We can drill deeper into the behavior of fetching pages from the OS (non-cached in postgres) with the following command:
-```
+```sh
 bpftrace -e '
 tracepoint:syscalls:sys_enter_pread64 /comm == "postgres"/ { @start[tid] = nsecs; }
 tracepoint:syscalls:sys_exit_pread64 /@start[tid]/ {
@@ -53,7 +53,7 @@ tracepoint:syscalls:sys_exit_pread64 /@start[tid]/ {
 ```
 
 which produces this result:
-```
+```sh
 @read_latency_ns: 
 [256, 512)          9522 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@      |
 [512, 1K)           4995 |@@@@@@@@@@@@@@@@@@@@@@@@                            |
@@ -78,13 +78,13 @@ Latencies this low suggest that all pages were already resident in the Linux pag
 So this would suggest that this is mainly a CPU/syscall-bound workload, not an IO-bound one.
 
 We can confirm this by looking for how many actual block I/O requests are actually generated under the same load:
-```
+```sh
 bpftrace -e '
 tracepoint:block:block_rq_issue { @issued = count(); }
 tracepoint:block:block_rq_complete { @completed_us = hist(nsecs / 1000); }'
 ```
 And indeed, the number of issued block:block_rq_issue is much smaller than the pread syscall count (as reported by postgres and confirmed earlier):
-```
+```sh
 @completed_us: 
 [256G, 512G)         353 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
 

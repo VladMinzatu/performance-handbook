@@ -1,7 +1,7 @@
 ## Low contention
 
 Re-seed and run the low contention experiment using pessimistic locking:
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 
 docker exec lab-postgres pgbench -D range=1000 -D think_time=0.005 \
@@ -9,7 +9,7 @@ docker exec lab-postgres pgbench -D range=1000 -D think_time=0.005 \
 ```
 
 producing the output:
-```
+```sh
 transaction type: /tmp/pessimistic.sql
 scaling factor: 1
 query mode: simple
@@ -25,7 +25,7 @@ tps = 2577.777080 (without initial connection time)
 ```
 
 And the actual decrement:
-```
+```sh
 docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT 1000 * 1000000 - SUM(balance) AS actual_decrement FROM hot_accounts;"
  actual_decrement 
@@ -35,14 +35,14 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
 ```
 
 And running the low contention experiment with optimistic locking:
-```
+```sh
 docker exec -i lab-postgres psql -U postgres -d labdb < seed.sql
 
 docker exec lab-postgres pgbench -D range=1000 -D think_time=0.005 \
   -f /tmp/optimistic.sql -c 20 -j 4 -T 20 -U postgres labdb
 ```
 producing output:
-```
+```sh
 transaction type: /tmp/optimistic.sql
 scaling factor: 1
 query mode: simple
@@ -58,7 +58,7 @@ tps = 2476.454713 (without initial connection time)
 ```
 
 And the actual decrement:
-```
+```sh
  docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT 1000 * 1000000 - SUM(balance) AS actual_decrement FROM hot_accounts;"
 

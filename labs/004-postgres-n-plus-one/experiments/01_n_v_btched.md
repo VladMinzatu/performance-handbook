@@ -1,7 +1,7 @@
 ## N+1 vs Batched
 
 With all the setup steps run (and thus both analysis and postgres containers running and the network delay set up), let's time the N+1 queries:
-```
+```sh
 time docker exec -e PGPASSWORD=postgres lab-postgres psql -h 127.0.0.1 -U postgres -d labdb -o /dev/null \   
   -f /tmp/n_plus_one.sql
 
@@ -9,7 +9,7 @@ docker exec -e PGPASSWORD=postgres lab-postgres psql -h 127.0.0.1 -U postgres  0
 ```
 
 And the batched version:
-```
+```sh
 time docker exec -e PGPASSWORD=postgres lab-postgres psql -h 127.0.0.1 -U postgres -d labdb -o /dev/null -c \
   "SELECT * FROM books WHERE author_id = ANY(ARRAY[$IDS]);"
 docker exec -e PGPASSWORD=postgres lab-postgres psql -h 127.0.0.1 -U postgres  0.03s user 0.02s system 30% cpu 0.172 total
