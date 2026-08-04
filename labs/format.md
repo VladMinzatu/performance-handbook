@@ -18,6 +18,17 @@ Backlog:
 - Networking and protocols
   - connection pooling in different runtimes
 - Concurrency & Synchronization
+- Go
+  - GOMAXPROCS vs. container CPU limits.
+  - Netpoller collapsing goroutines onto epoll. 
+  - Blocking syscalls vs. network I/O — different thread-growth behavior. (not all blocking is equal) 
+  - Goroutine-per-connection scaling ceiling. 
+  - Context cancellation leaks in request handling. 
+  - Client-side connection pooling and TIME_WAIT churn. (fresh TCP connection per request)
+  - Nagle's algorithm vs. delayed ACK. 
+  - GC pause impact and GOGC/GOMEMLIMIT tuning
+  - Escape analysis and hidden heap allocations
+  - Mutex contention vs. channels, at the futex level
 - Virtualization
 - Containers & cgroup
 - Databases
