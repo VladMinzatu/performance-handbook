@@ -1,0 +1,21 @@
+# System under test for lab 006: the same CPU-bound Go binary run twice,
+# both capped at 2 CPUs via a cgroup quota (`cpus: "2"`), differing only in
+# GOMAXPROCS. No shared network is needed here - unlike the Postgres labs,
+# nothing connects to these containers over the network; the OS-level view
+# (see README) observes them by PID, not by address.
+services:
+  # GOMAXPROCS left unset - Go auto-detects via the host's CPU affinity
+  # mask, which a cgroup CPU quota does not change. Expect this to report
+  # the host's full core count, not 2.
+  cpuburn-default:
+    build: .
+    container_name: lab-go-cpuburn-default
+    cpus: "2"
+
+  # Same image, same 2-CPU quota, but GOMAXPROCS explicitly matches it.
+  cpuburn-fixed:
+    build: .
+    container_name: lab-go-cpuburn-fixed
+    cpus: "2"
+    environment:
+      GOMAXPROCS: "2"
