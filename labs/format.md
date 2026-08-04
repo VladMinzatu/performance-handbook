@@ -21,7 +21,6 @@ Backlog:
 - Virtualization
 - Containers & cgroup
 - Databases
-  - PG: Connection overhead / pooling (raw connections vs PgBouncer) — measures per-request connection setup cost and how pooling changes throughput under bursty load,
 - Language runtimes and GC
 - GPUs / accelerators
 - Compilers
