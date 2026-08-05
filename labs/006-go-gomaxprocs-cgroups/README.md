@@ -53,7 +53,7 @@ for the same amount of useful work.
 ## Setup
 
 Build and start both containers - identical image, identical 2-CPU quota,
-differing only in whether `GOMAXPROCS` is set:
+differing only in whether the `GOMAXPROCS` environment variable is set:
 ```sh
 docker compose -f compose.yml up -d --build
 ```
