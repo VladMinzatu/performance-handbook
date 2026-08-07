@@ -1,145 +1,74 @@
 ## Throttling effect
 
-Let's check the throughput of the two containers after they've been working for a while:
+Let's create the image to run some tests:
 ```sh
-docker logs lab-go-cpuburn-default | tail -5
-ops/sec=7203054 goroutines=9
-ops/sec=7145298 goroutines=9
-ops/sec=7108741 goroutines=9
-ops/sec=7764077 goroutines=9
-ops/sec=7047468 goroutines=9
+docker build -t cpuburn .
 ```
-and
-```sh
-docker logs lab-go-cpuburn-fixed | tail -5
-ops/sec=20784468 goroutines=3
-ops/sec=19952827 goroutines=3
-ops/sec=20320202 goroutines=3
-ops/sec=21136091 goroutines=3
-ops/sec=19571130 goroutines=3
-```
-
-Note that they are both doing busy pure-CPU bound work at the with GOMAXPROCs number of workers each.
-
-And what we notice is that `lab-go-cpuburn-fixed` has much better throughput: its 2 workers/goroutines update the counter roughly 20M times every second, while `lab-go-cpuburn-default` only manages around 7M updates with its 8 workers/goroutines.
-
-This is actually a much bigger difference than we could have expected, as it should be mainly scheduling overhead or managing more workers for the default version. We can dig deeper into what is happening:
-```sh
-> docker exec lab-go-cpuburn-default cat /sys/fs/cgroup/cpu.stat
-usage_usec 803061268
-user_usec 801256611
-system_usec 1804656
-nice_usec 0
-nr_periods 4016
-nr_throttled 4015
-throttled_usec 1601744831
-nr_bursts 0
-burst_usec 0
-
-> docker exec lab-go-cpuburn-fixed cat /sys/fs/cgroup/cpu.stat
-usage_usec 800072898
-user_usec 799192783
-system_usec 880114
-nice_usec 0
-nr_periods 4015
-nr_throttled 2157
-throttled_usec 2932223
-nr_bursts 0
-burst_usec 0
-```
-
-To make sense of these numbers, it helps to know how the kernel actually enforces a `cpus: "2"` limit. It isn't "pin this group to 2 specific cores" (that's a different mechanism, `cpuset`) - by default the scheduler is still free to run the group's threads on any of the host's cores. Instead, the limit is a *time budget*: for a 2-CPU limit, the cgroup is allowed at most 200ms of total CPU-time - summed across however many cores it actually runs on - in every 100ms period. That's just as satisfied by 2 cores running flat out for the whole period as by, say, 8 cores each running for 25ms.
-
-That's exactly why `cpuburn-default`'s 8 always-busy threads burn through the budget so fast: spread across up to 8 cores at once, they can consume 200ms of aggregate CPU-time in roughly the first 25ms of wall-clock time within each 100ms period. Once the budget hits zero, the kernel doesn't slow the threads down - it stops scheduling every one of them entirely for the rest of that period, no matter how many cores are sitting idle. That hard stop is what `nr_throttled` counts, not "ran slower." Since this exhaust-then-block cycle repeats in essentially every single period for `cpuburn-default`, its `nr_throttled`/`nr_periods` ratio lands near 1:1. `cpuburn-fixed`'s 2 threads, by contrast, consume the budget at close to the rate it refills, so most periods finish without ever hitting zero - its much lower ratio reflects only occasional, brief overshoots from ordinary scheduling jitter,not a workload that's structurally oversubscribed.
-
-But that doesn't explain the difference in throughput! We can look at the respective `system_usec`s and see that indeed `lab-go-cpuburn-default` does spend more system time, presumably attributable (in part) to the overhead of scheduling more workers. But that is less than 1% of the `usage_usec` either way - definitely not explaining the 3x difference in throughput.
-
-### A middle data point: GOMAXPROCS=4
-
-Before going further, it's worth checking whether the loss scales the way a "wrong number of cores" story would predict. This machine's host is an Apple M2: 4 Performance cores + 4 Efficiency cores. With `GOMAXPROCS=8`, at least 4 of the 8 threads *must* run on the slower E-cores - there's nowhere else to put them. With exactly `GOMAXPROCS=4`, all 4 threads could in principle fit entirely on the 4 P-cores. If core type were the whole story, throughput at `GOMAXPROCS=4` should land much closer to the 2-thread case than to the 8-thread one.
 
 ```sh
-docker run -d --rm --name gmp4-test --cpus=2 -e GOMAXPROCS=4 <the cpuburn image>
+docker run -d --rm --name gmp1-test --cpus=1 -e GOMAXPROCS=1 cpuburn
 
-docker logs <container_id>
-...
-GOMAXPROCS=4 NumCPU=8 numWorkers=4
-ops/sec=9223328 goroutines=5
-ops/sec=8450994 goroutines=5
-ops/sec=7939271 goroutines=5
-ops/sec=8263649 goroutines=5
-ops/sec=8186327 goroutines=5
+docker logs gmp1-test                       
+GOMAXPROCS=1 NumCPU=8 numWorkers=1
+ops/sec=15169901 goroutines=2
+ops/sec=15381939 goroutines=2
+ops/sec=14298684 goroutines=2
+
+docker kill gmp1-test
 ```
-It doesn't. ~9M ops/sec is barely better than `GOMAXPROCS=8`'s ~7M, and less than half of `GOMAXPROCS=2`'s ~20M. Its `cpu.stat` also shows the same "throttled in nearly every period" signature (`nr_throttled`/`nr_periods` ≈ 81/83) as the 8-thread case, just with a shorter freeze per period (4 threads exhaust the 200ms budget around the 50ms mark instead of the 25ms mark). So whatever is driving the loss doesn't cleanly track "how many threads exceed the P-core count" - it tracks something closer to "is this oversubscribed at all," and going from 4x to 2x oversubscribed only recovers a small fraction of the gap.
 
-### Isolating it: does an individual hash call itself get slower?
-
-Everything so far is throughput and aggregate `cpu.stat` counters - consistent with *some* per-operation slowdown, but not direct evidence of one. To check this directly, we can time individual `crypto/sha256.Sum256` calls with a uprobe/uretprobe pair, keyed by thread id so concurrent calls on different OS threads don't get mixed up:
 ```sh
-PID=$(docker inspect -f '{{.State.Pid}}' <container>)
-docker compose -f ../tools/analysis/compose.yml exec -T analysis bash -c "
-  bpftrace -e '
-    uprobe:/proc/${PID}/root/usr/local/bin/cpuburn:crypto/sha256.Sum256
-    { @start[tid] = nsecs; }
-    uretprobe:/proc/${PID}/root/usr/local/bin/cpuburn:crypto/sha256.Sum256
-    /@start[tid]/
-    {
-      @latency_ns = hist(nsecs - @start[tid]);
-      delete(@start[tid]);
-    }
-    interval:s:5 { exit(); }
-  '
-"
-```
-Running one container at a time (stopping the others first) - all three services build from the same image, and a uprobe attaches by file/inode, not by process, so it can fire across containers that happen to share the same underlying binary layer on disk.
+docker run -d --rm --name gmp2-test --cpus=1 -e GOMAXPROCS=2 cpuburn
 
-`GOMAXPROCS=2` (fixed):
-```
-@latency_ns:
-[512, 1K)        8619696 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
-[1K, 2K)          114309 |                                                    |
-[2K, 4K)            2033 |
-...
-[4M, 8M)               1 |
+docker logs gmp2-test  
+GOMAXPROCS=2 NumCPU=8 numWorkers=2
+ops/sec=11384401 goroutines=3
+ops/sec=10369581 goroutines=3
+ops/sec=10338129 goroutines=3
+ops/sec=10013226 goroutines=3
+ops/sec=11045344 goroutines=3
+ops/sec=10752149 goroutines=3
+
+docker kill gmp2-test
 ```
 
-`GOMAXPROCS=4`:
+### Findings
+
+Averaging each run: ~14.95M ops/sec at `GOMAXPROCS=1` versus ~10.65M at `GOMAXPROCS=2` - a 29% loss, against the *same* 1-CPU quota, despite the second run nominally having twice as many workers trying to do the work.
+
+To see why, repeat each run with a check of the cgroup's own accounting right after:
+```sh
+docker exec <container> cat /sys/fs/cgroup/cpu.stat
 ```
-@latency_ns:
-[512, 1K)         334519 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
-[1K, 2K)           45589 |@@@@@@@
-...
-[1M, 2M)               1 |
+```sh
+GOMAXPROCS=1:
+usage_usec 6091916
+nr_periods 61
+nr_throttled 35
+throttled_usec 14776
+
+GOMAXPROCS=2:
+usage_usec 6228485
+nr_periods 62
+nr_throttled 61
+throttled_usec 6266616
 ```
 
-`GOMAXPROCS=8` (default):
-```
-@latency_ns:
-[512, 1K)         118173 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     |
-[1K, 2K)          128224 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
-[2K, 4K)           21281 |@@@@@@@@
-...
-[32M, 64M)              9 |
-[64M, 128M)             1 |
-```
+**First: the quota ceiling gets hit far more often with 2 threads.** Only about half the periods reach it with a single thread (35/61 - occasional, minor overshoots), but essentially *every* period does with two (61/62). That's the direct mechanical consequence of the quota being a fixed CPU-time budget per period (100ms of CPU-time per 100ms period, for a 1-CPU limit): with 2 always-busy threads running in parallel, that 100ms budget gets consumed in about half the wall-clock time it takes a single thread to use it up, leaving the rest of every period for the kernel to freeze the whole cgroup - not slow it down, stop it - until the next period's budget arrives.
 
-Two distinct things show up here, and it's worth not conflating them:
+The `throttled_usec` numbers let us work out *how* that time actually splits, rather than just asserting it. `throttled_usec` for `GOMAXPROCS=2` is 6,266,616us - which is *larger* than the roughly 6.2s of real wall-clock time the whole run took (62 periods x 100ms). That's only possible if, like `usage_usec`, this counter sums across every thread being throttled simultaneously rather than measuring wall-clock time once - i.e. two threads frozen together for 50ms each contribute 100ms to the total, not 50ms. Dividing back out: 6,266,616us over 61 throttled periods is ~102,732us of *summed* freeze time per period: split across 2 threads,that's ~51.4ms frozen, per thread, per period - almost exactly half. In other words, each of the 2 threads gets to run for roughly the first half of every period, in parallel, burns through the shared budget together in that time, and then both sit frozen for the second half. That's a clean, mechanical explanation for *some* throughput loss: each individual thread
+is only actually executing about half the time.
 
-- **The extreme tail** (milliseconds-long calls, only present for `GOMAXPROCS=8`) is the duty-cycle effect caught in the act: a hash call that started, got frozen mid-execution when the cgroup's quota ran out, and only finished once the next period began. That's the same throttling `cpu.stat` already showed us, just visible now at the level of one specific in-flight operation instead of an aggregate counter.
-- **The bulk of the distribution** - excluding that tail entirely - still shifts. The fraction of calls landing in the slower 1-2us bucket (versus the faster 512ns-1us one) climbs steadily with oversubscription:
+**But that alone doesn't explain the size of the gap.** Both configurations consume essentially the *same* total CPU-seconds
+(`usage_usec`: 6,091,916 vs. 6,228,485 - `GOMAXPROCS=2` used marginally *more*, if anything). If splitting that same budget across 2 threads instead of 1 came at no extra cost, both runs should produce essentially the same amount of work - the arithmetic predicts `GOMAXPROCS=2` should do about `14.95M x (6,228,485/6,091,916)` ~= 15.29M ops/sec, matching (or slightly beating) `GOMAXPROCS=1`. It actually does 10.65M - about 4.64M ops/sec short of that prediction, or roughly 74,800 "missing" ops per period.
 
-  | | % of calls in the slower (1-2us) bucket |
-  |---|---|
-  | GOMAXPROCS=2 | 1.3% |
-  | GOMAXPROCS=4 | 12.0% |
-  | GOMAXPROCS=8 | 52.0% |
+Converting that gap into time (using `GOMAXPROCS=1`'s own rate as the baseline cost of one hash: ~1 CPU-second / 14.95M ops =~ 67ns/op), ~74,800 missing ops per period is about 5ms of otherwise-achievable work disappearing from every single period - split across the 2 threads that each freeze and resume once per period, that's roughly **2.5ms of lost work per thread, per throttle-freeze-and-resume cycle**. That's a small but real, and remarkably consistent, tax that a continuously-running thread (`GOMAXPROCS=1`, which almost never gets frozen) never pays.
 
-This is calls that completed without ever hitting a freeze boundary, still taking measurably longer, more often, as more threads compete - a real per-operation efficiency loss, cleanly separable from the freeze/duty-cycle story, and scaling smoothly with the degree of oversubscription rather than behaving like a fixed, binary cost.
+Nothing here depends on what specific hardware this happens to run on - whatever gets evicted or has to be rebuilt each time a stopped thread resumes (cache contents, pipeline state, the Go runtime's own bookkeeping for a rescheduled goroutine) costs *something*, and a thread that freezes and resumes roughly once every 100ms pays that cost roughly once every 100ms, while a thread that's never interrupted doesn't pay it at all.
 
-### Conclusion
+### Background: Why this is specifically a CPU-time effect
 
-The throughput gap is the sum of two distinct, additive effects, not one:
-1. **Duty-cycle loss** - oversubscribed threads spend a large fraction of every period frozen entirely (the `nr_throttled`/`cpu.stat` story), visible directly as multi-millisecond outliers in the per-call latency data.
-2. **Per-operation efficiency loss** - even the calls that *do* run, without being frozen mid-flight, get measurably slower as more threads compete for the same quota, in a dose-dependent way (1.3% -> 12.0% -> 52.0% of calls landing in the slower bucket as oversubscription goes from 1x to 2x to 4x).
+Note that this only shows up for CPU-bound work, since it's tempting to assume any kind of "too many goroutines" situation behaves similarly, but that's not the case. The cgroup CPU controller is purely a CPU-*time* accounting mechanism: it tracks how many CPU-seconds a cgroup's threads actually spend running on a CPU, and throttles once that crosses the configured quota for the current period. 
 
-What we can't pin down further with the tools available here is the exact physical mechanism behind effect (2). This host's chip has 4 Performance + 4 Efficiency cores, and being forced onto a slower E-core is a plausible contributor - but the middle `GOMAXPROCS=4` data point (which should avoid E-cores entirely, if that were the whole story) argues it's not the complete picture, and possibly not even the dominant one. Cache/TLB pressure from more concurrently-active threads, or per-core frequency scaling under heavier simultaneous load, are equally plausible and not distinguishable from here.
+That means a goroutine blocked in `time.Sleep()`, waiting on a channel, or blocked on network I/O isn't consuming any CPU time while it waits, so it contributes nothing toward exhausting the quota - it simply isn't part of what this mechanism measures. A service with hundreds of mostly-idle goroutines handling slow requests could have its `GOMAXPROCS` set just as "wrong" as this lab's workload, and never once get throttled by the CPU controller, because it's never actually trying to consume more CPU-seconds
+than its quota allows - the goroutines are waiting, not running. The throttling and throughput loss demonstrated here is specific to workloads that are genuinely, continuously CPU-bound; for anything I/O- or timer-bound, a wrong `GOMAXPROCS` might still matter for other reasons (e.g. scheduling fairness or memory overhead from excess OS threads), but it would not show up as CFS bandwidth throttling, because there'd be no CPU-time to throttle in the first place.
