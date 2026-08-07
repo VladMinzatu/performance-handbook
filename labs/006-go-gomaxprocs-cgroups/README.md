@@ -75,86 +75,9 @@ docker exec lab-go-cpuburn-fixed cat /sys/fs/cgroup/cpu.stat
 is how many of those periods this cgroup got throttled in; `throttled_usec`
 is cumulative time spent throttled, waiting for the next period's quota.
 
-## Step 1 - confirm the mismatch (prediction 1)
+## Experiments
 
-```sh
-docker logs lab-go-cpuburn-default | head -1
-docker logs lab-go-cpuburn-fixed | head -1
-```
-What to check: `cpuburn-default`'s line should show `GOMAXPROCS` equal to
-`NumCPU` and equal to the *host's* core count (check with `nproc` on the
-host) - not 2, despite the container being limited to 2 CPUs.
-`cpuburn-fixed`'s line should show `GOMAXPROCS=2` (from the env var) with
-`NumCPU` still reporting the host's count (confirming `NumCPU` itself
-never changes - only what you *do* with it does).
-
-## Step 2 - quantify the throughput and throttling cost (prediction 2)
-
-Let both run for at least 30-60s, then compare:
-```sh
-docker logs lab-go-cpuburn-default | tail -5
-docker logs lab-go-cpuburn-fixed | tail -5
-
-docker exec lab-go-cpuburn-default cat /sys/fs/cgroup/cpu.stat
-docker exec lab-go-cpuburn-fixed cat /sys/fs/cgroup/cpu.stat
-```
-What to check: `ops/sec` for `cpuburn-fixed` should be substantially
-higher than `cpuburn-default`'s, despite `cpuburn-default` nominally
-"trying" to use 4x as many worker goroutines (8 vs 2) - it's just spending
-most of its time throttled rather than running. Confirm this directly:
-`cpuburn-default`'s `nr_throttled` should be close to its `nr_periods`
-(throttled in nearly every period), while `cpuburn-fixed`'s should be far
-lower, with `throttled_usec` correspondingly much smaller.
-
-## Step 3 (stretch) - watching the extra scheduling cost directly (prediction 3)
-
-Counting `sched_switch` events per container is trickier than it looks:
-`docker inspect`'s reported PID is only the main thread, Go spawns several
-OS threads per process, and (at least on this OrbStack setup) the PID
-namespace the `analysis` container sees for kernel tracepoint data doesn't
-reliably line up with what `docker inspect`/`docker top` report at all -
-worth checking for yourself (`docker top <container>` vs. what a bare
-`bpftrace -e 'tracepoint:sched:sched_switch { @[pid] = count(); }'`
-actually observes) rather than assuming this environment's PID mappings
-are consistent across tools.
-
-The reliable way around this: run the two containers **sequentially**
-rather than simultaneously, and filter by `comm` alone - with only one
-`cpuburn` process alive at a time, there's no ambiguity to resolve.
-```sh
-docker compose -f ../tools/analysis/compose.yml up -d --build
-
-# default (GOMAXPROCS=8, wrong) alone:
-docker stop lab-go-cpuburn-fixed
-docker compose -f ../tools/analysis/compose.yml exec -T analysis bash -c "
-  bpftrace -e '
-    tracepoint:sched:sched_switch
-    /comm == \"cpuburn\"/
-    { @switches = count(); }
-    interval:s:1 { print(@switches); clear(@switches); }
-    interval:s:5 { exit(); }
-  '
-"
-docker start lab-go-cpuburn-fixed
-
-# fixed (GOMAXPROCS=2, correct) alone:
-docker stop lab-go-cpuburn-default
-docker compose -f ../tools/analysis/compose.yml exec -T analysis bash -c "
-  bpftrace -e '
-    tracepoint:sched:sched_switch
-    /comm == \"cpuburn\"/
-    { @switches = count(); }
-    interval:s:1 { print(@switches); clear(@switches); }
-    interval:s:5 { exit(); }
-  '
-"
-docker start lab-go-cpuburn-default
-```
-What to check: a markedly higher `sched_switch` rate for the `default`
-run than for `fixed`, over the same wall-clock window - the oversubscribed
-case forces the kernel to do far more preemption/context-switching to
-time-slice more runnable threads than the quota can actually sustain
-concurrently.
+See [Experiments directory](./experiments)
 
 ## Tear down
 
