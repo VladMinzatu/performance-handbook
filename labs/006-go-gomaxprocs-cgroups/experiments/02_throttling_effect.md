@@ -66,6 +66,10 @@ Converting that gap into time (using `GOMAXPROCS=1`'s own rate as the baseline c
 
 Nothing here depends on what specific hardware this happens to run on - whatever gets evicted or has to be rebuilt each time a stopped thread resumes (cache contents, pipeline state, the Go runtime's own bookkeeping for a rescheduled goroutine) costs *something*, and a thread that freezes and resumes roughly once every 100ms pays that cost roughly once every 100ms, while a thread that's never interrupted doesn't pay it at all.
 
+This is all derived from `cpu.stat`'s aggregate counters, by arithmetic -
+see [03_throttling_measurements.md](./03_throttling_measurements.md) for
+direct, OS-level scheduling measurements that confirm it.
+
 ### Background: Why this is specifically a CPU-time effect
 
 Note that this only shows up for CPU-bound work, since it's tempting to assume any kind of "too many goroutines" situation behaves similarly, but that's not the case. The cgroup CPU controller is purely a CPU-*time* accounting mechanism: it tracks how many CPU-seconds a cgroup's threads actually spend running on a CPU, and throttles once that crosses the configured quota for the current period. 
