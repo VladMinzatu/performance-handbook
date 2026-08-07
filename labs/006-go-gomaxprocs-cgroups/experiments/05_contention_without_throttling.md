@@ -56,10 +56,7 @@ Scaling factor achieved:                       1.534x (not 2x)
 Shortfall from perfect scaling:                23.3%
 ```
 
-### Conclusion
-
 With no meaningful throttling in either configuration, doubling the threads and doubling the CPU quota together should come close to doubling throughput, if every CPU-second were equally productive regardless of thread count. It doesn't - two threads on two cores achieve only 1.53x the throughput of one thread on one core, a 23.3% shortfall from perfect
 scaling.
 
-That number lines up almost exactly with the ~23% share of CPU time `pprof` attributed to `main.worker`'s own flat time (the inlined `atomic.AddUint64` call) in the *throttled* comparison in `04_pprof_confirmation.md`. Two different experiments - one riddled with cgroup throttling, one with essentially none at all - converge on the same number for the same reason: contended access to the shared atomic counter costs the same whether or not a cgroup is involved. This is about as clean a confirmation as this lab's tooling can produce that the second contributor to the original throughput gap is a genuine, quota-independent
-multicore cost, not an artifact of measuring it inside a throttled container.
+That number lines up almost exactly with the ~23% share of CPU time `pprof` attributed to `main.worker`'s own flat time. The strong suspect here is the inlined `atomic.AddUint64` call, but it may not be the only contributor. Nevertheless, this experiment does prove the lack of an effect from the throttling: two different experiments - one riddled with cgroup throttling, one with essentially none at all - converge on the same number for the same reason: contended access to the shared atomic counter costs the same whether or not a cgroup is involved. This is about as clean a confirmation as this lab's tooling can produce that the second contributor to the original throughput gap is a genuine, quota-independent cost, not an artifact of measuring it inside a throttled container.
