@@ -22,6 +22,7 @@ Backlog:
   - GOMAXPROCS vs. container CPU limits.
   - Netpoller collapsing goroutines onto epoll. 
   - Blocking syscalls vs. network I/O — different thread-growth behavior. (not all blocking is equal) 
+  - atomic/lock contention
   - Goroutine-per-connection scaling ceiling. 
   - Context cancellation leaks in request handling. 
   - Client-side connection pooling and TIME_WAIT churn. (fresh TCP connection per request)
