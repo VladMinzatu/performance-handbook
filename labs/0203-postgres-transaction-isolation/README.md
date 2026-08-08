@@ -1,4 +1,4 @@
-# 003 - Postgres transaction isolation levels
+# Postgres transaction isolation levels
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md) (the
 `analysis` container isn't required for the core lab here - the

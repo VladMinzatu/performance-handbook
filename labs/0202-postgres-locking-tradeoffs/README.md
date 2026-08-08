@@ -1,4 +1,4 @@
-# 002 - Postgres locking tradeoffs: optimistic vs pessimistic
+# Postgres locking tradeoffs: optimistic vs pessimistic
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md) (even 
 if the `analysis` container isn't required for the core lab here, we still 

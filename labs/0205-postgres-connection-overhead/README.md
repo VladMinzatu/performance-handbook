@@ -1,4 +1,4 @@
-# 005 - Postgres connection overhead
+# Postgres connection overhead
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md). The
 `analysis` container is only needed for the optional OS-level stretch step

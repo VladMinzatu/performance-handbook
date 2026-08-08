@@ -1,4 +1,4 @@
-# 006 - Go's GOMAXPROCS vs. container CPU limits
+# Go's GOMAXPROCS vs. container CPU limits
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md), but
 only for the optional OS-level step - the two Go containers here don't

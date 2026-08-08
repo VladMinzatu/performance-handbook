@@ -1,4 +1,4 @@
-# 001 - Postgres index impact
+# Postgres index impact
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md).
 

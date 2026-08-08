@@ -1,4 +1,4 @@
-# 004 - Postgres N+1 queries vs. batching
+# Postgres N+1 queries vs. batching
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md). The
 `analysis` container is only needed for setting up the network and the optional stretch step
