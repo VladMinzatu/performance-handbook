@@ -1,0 +1,37 @@
+# System under test for lab 0102: a Go TCP server holding many
+# connections open (each blocked in Read on its own goroutine) and a
+# client that dials CONNS of them and can trigger a synchronized
+# wake-all burst. Joins the external `labnet` network created by
+# labs/tools/analysis/compose.yml so the analysis container can reach -
+# and trace - the server by name/PID.
+services:
+  server:
+    build:
+      context: .
+      target: server
+    container_name: lab-go-netpoll-server
+    environment:
+      # Deliberately constrained so a wake-all burst has to queue for Ps -
+      # raise this to see the contention in Prediction 4 shrink.
+      GOMAXPROCS: "2"
+    networks:
+      - labnet
+
+  client:
+    build:
+      context: .
+      target: client
+    container_name: lab-go-netpoll-client
+    environment:
+      SERVER_ADDR: "server:9000"
+      CONNS: "2000"
+    depends_on:
+      - server
+    ports:
+      - "8090:8090"
+    networks:
+      - labnet
+
+networks:
+  labnet:
+    external: true
