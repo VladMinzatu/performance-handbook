@@ -88,5 +88,5 @@ put across a 16x connection-count change.
 Now we can restore the lab's normal default state afterwards:
 ```sh
 docker stop lab-go-netpoll-client && docker rm lab-go-netpoll-client
-docker compose -f ../compose.yml up -d
+docker compose -f compose.yml up -d
 ```
