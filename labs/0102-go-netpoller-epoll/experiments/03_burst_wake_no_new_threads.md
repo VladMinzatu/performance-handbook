@@ -83,8 +83,7 @@ This is the concrete difference between "goroutine becomes runnable" and "OS thr
 by how many goroutines just became runnable at once. A thread-per-blocking-read server would have no way to service 8000 simultaneously readable sockets without either 8000 threads already sitting there
 waiting, or forking that many on the spot - this design needs neither.
 
-Note what this experiment does *not* show: it says nothing about how long those newly-runnable goroutines take to actually get CPU time and finish - only that thread creation isn't part of the cost. The `p50`/`p99`/`max` numbers surfaced above as a side effect (~70-140ms for 2000 connections,
-all competing for `GOMAXPROCS=2`) are exactly the queuing-for-a-P question that Prediction 4 covers separately.
+Note what this experiment does *not* show: it says nothing about how long those newly-runnable goroutines take to actually get CPU time and finish - only that thread creation isn't part of the cost. The `p50`/`p99`/`max` numbers surfaced above as a side effect (~70-140ms for 2000 connections vs. ~250-450ms for 8000 connections, all competing for `GOMAXPROCS=2`) are exactly the queuing-for-a-P question that Prediction 4 covers separately.
 
 Restore the lab's normal default state afterwards:
 ```sh
