@@ -1,0 +1,60 @@
+# System under test for lab 0103: a companion delay-server plus three
+# otherwise-identical worker containers (same image, same WORKERS/WORK_MS)
+# that differ only in *how* each of their WORKERS goroutines blocks for
+# WORK_MS on every iteration - a runtime timer, a real blocking syscall,
+# or a network read against delay-server. Joins the external `labnet`
+# network created by labs/tools/analysis/compose.yml so the analysis
+# container can reach - and trace - any of them by name/PID.
+services:
+  delay-server:
+    build:
+      context: .
+      target: delay-server
+    container_name: lab-go-delay-server
+    environment:
+      DELAY_MS: "200"
+    networks:
+      - labnet
+
+  worker-timer:
+    build:
+      context: .
+      target: worker
+    container_name: lab-go-worker-timer
+    environment:
+      MODE: "timer"
+      WORKERS: "2000"
+      WORK_MS: "200"
+    networks:
+      - labnet
+
+  worker-syscall:
+    build:
+      context: .
+      target: worker
+    container_name: lab-go-worker-syscall
+    environment:
+      MODE: "syscall"
+      WORKERS: "2000"
+      WORK_MS: "200"
+    networks:
+      - labnet
+
+  worker-netpoll:
+    build:
+      context: .
+      target: worker
+    container_name: lab-go-worker-netpoll
+    environment:
+      MODE: "netpoll"
+      WORKERS: "2000"
+      WORK_MS: "200"
+      DELAY_SERVER_ADDR: "delay-server:9100"
+    depends_on:
+      - delay-server
+    networks:
+      - labnet
+
+networks:
+  labnet:
+    external: true
