@@ -64,8 +64,8 @@ notice, on its own periodic sweep, that a `P` has been sitting in syscall
 state too long and forcibly retake it before a new M can be created for
 it. Tracing `clone`/`clone3` syscalls on the `MODE=syscall` worker's PID
 while `WORKERS` ramps up should show new-thread creation roughly tracking
-the growth in concurrently-blocked goroutines - in sharp contrast to lab
-0102's Prediction 3, which found *zero* `clone` calls even during a burst
+the growth in concurrently-blocked goroutines - in sharp contrast to the previous 
+lab's Prediction 3, which found *zero* `clone` calls even during a burst
 of thousands of simultaneous network wakeups on the same kind of
 workload.
 
