@@ -90,3 +90,28 @@ goroutines=12001
 lab-go-worker-netpoll	Up 15 seconds
 Threads:	27
 ```
+
+Let's also try the timer, just for completeness:
+```sh
+docker stop lab-go-worker-timer
+docker rm lab-go-worker-timer
+
+docker run -d --name lab-go-worker-timer --network labnet \
+  -e MODE=timer -e WORKERS=12000 -e WORK_MS=60000 \
+  0103-go-blocking-syscalls-vs-network-io-worker-netpoll:latest
+sleep 15
+docker logs lab-go-worker-timer | tail -5
+docker ps -a --filter name=lab-go-worker-timer --format '{{.Names}}\t{{.Status}}'
+docker exec lab-go-worker-timer sh -c 'grep Threads /proc/1/status'
+```
+which produces the output:
+```sh
+goroutines=12001
+goroutines=12001
+goroutines=12001
+goroutines=12001
+goroutines=12001
+lab-go-worker-timer	Up 15 seconds
+Threads:	9
+```
+Easy!
