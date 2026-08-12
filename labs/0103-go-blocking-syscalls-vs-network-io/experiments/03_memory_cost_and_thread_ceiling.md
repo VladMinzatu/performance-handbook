@@ -11,6 +11,7 @@ c951c8340806   lab-go-worker-timer     3.11%     8.082MiB / 11.74GiB   0.07%    
 ca8224bc0620   lab-go-worker-syscall   10.65%    71.5MiB / 11.74GiB    0.60%     1.21kB / 126B     2.79MB / 0B   2010
 6751c95514ea   lab-go-worker-netpoll   32.56%    23.7MiB / 11.74GiB    0.20%     33.7MB / 17.4MB   4.1kB / 0B    19
 ```
+`syscall`'s 71.5MiB is ~9x `timer`'s 8MiB, and the `PIDS` column (2010) matches the known thread count exactly - a free corroboration straight from `docker stats`. Worth noting `netpoll` (23.7MiB) sits well above `timer` (8MiB) despite only 19 threads too - that gap is per-connection socket buffers, not thread overhead.
 
 Cross-check with `/proc/1/status`'s `VmRSS` directly:
 ```sh
@@ -26,6 +27,7 @@ echo "netpoll:"; docker exec lab-go-worker-netpoll  sh -c 'grep VmRSS /proc/1/st
 netpoll:
 VmRSS:	   25468 kB
 ```
+Matches `docker stats` closely (73216 kB reported there vs. 75152 kB here) - same ranking, same order of magnitude, just a different accounting method.
 
 `WORK_MS=200`'s thread reuse (see previous experiment) means thread count doesn't track `WORKERS` 1:1 once `WORKERS` gets large - so to force genuinely simultaneous blocking, use `WORK_MS=60000` with `WORKERS` comfortably past 10,000:
 ```sh
@@ -42,6 +44,7 @@ docker ps -a --filter name=lab-go-worker-syscall --format '{{.Names}}\t{{.Status
 
 and that produces:
 ```sh
+...
 goroutine 11844 gp=0x40186b5c00 m=nil [runnable]:
 main.main.func1()
 	/src/worker.go:94 fp=0x40186b87d0 sp=0x40186b87d0 pc=0xe8cf0
@@ -65,6 +68,7 @@ created by main.main in goroutine 1
 	/src/worker.go:94 +0x384
 lab-go-worker-syscall	Exited (2) 20 seconds ago
 ```
+Exit code 2 is Go's fatal-error exit status. The top of the same log (cut off above by the goroutine-dump tail) reads exactly as predicted: `runtime: program exceeds 10000-thread limit` / `fatal error: thread exhaustion`, which is a hard-coded ceiling.
 
 Just to cross check: will the other workers survive with the same settings? Let's try netpoll:
 ```sh
@@ -90,6 +94,7 @@ goroutines=12001
 lab-go-worker-netpoll	Up 15 seconds
 Threads:	27
 ```
+27 threads for 12000 goroutines - the same flat, `GOMAXPROCS`-ish ballpark as every other `netpoll` measurement in this lab, regardless of `WORKERS`.
 
 Let's also try the timer, just for completeness:
 ```sh
@@ -114,4 +119,4 @@ goroutines=12001
 lab-go-worker-timer	Up 15 seconds
 Threads:	9
 ```
-Easy!
+Cheapest of all three, as expected - no syscall, no socket, just a parked goroutine and a runtime timer. Easy!
