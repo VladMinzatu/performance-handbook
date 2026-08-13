@@ -1,0 +1,21 @@
+# System under test for lab 0104: the same shared-counter binary run
+# twice, identical WORKERS, differing only in whether the increment is a
+# lock-free atomic instruction or a sync.Mutex-protected one. No network
+# reachability needed between them - unlike labs 0102/0103, nothing here
+# talks over a socket, so this doesn't join `labnet`. The OS-level view
+# (see README) observes each container by PID, via the shared `analysis`
+# container's `pid: host`.
+services:
+  counter-atomic:
+    build: .
+    container_name: lab-go-counter-atomic
+    environment:
+      MODE: "atomic"
+      WORKERS: "32"
+
+  counter-mutex:
+    build: .
+    container_name: lab-go-counter-mutex
+    environment:
+      MODE: "mutex"
+      WORKERS: "32"
