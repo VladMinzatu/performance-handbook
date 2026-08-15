@@ -23,7 +23,7 @@ ops/sec=44260936 goroutines=33
 ops/sec=12927339 goroutines=33
 
 ```
-Already a substantial gap at the default `WORKERS=32` - atomic is doing ~3.4x the throughput of mutex, before we've even looked at a single syscall trace.
+Already a substantial gap at the default `WORKERS=32` - atomic is doing ~3.4x the throughput of mutex, before we've even looked at a single syscall trace. However, although it doesn't touch the kernel and it executes as a specialized CPU instruction in kernel space, it is very far from free (as we've seen in a previous lab on cgroups).
 
 Now, in case it's not already running, start the shared analysis container:
 ```sh
