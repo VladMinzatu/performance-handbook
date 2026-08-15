@@ -101,16 +101,20 @@ docker compose -f compose.yml up -d --build
 ```
 
 For the `futex` tracing predictions, use the shared analysis container
-(see [tools/](../tools/README.md) for the one-time setup). Filtering by
-`comm` rather than PID is the reliable option in this environment - PID
-filtering was unreliable in earlier labs (see
+(see [tools/](../tools/README.md) for the one-time setup). Earlier labs
+found PID-based filtering unreliable when sourced via `pgrep` run
+*inside* the analysis container (see
 [lab 0102's experiment 02](../0102-go-netpoller-epoll/experiments/02_epoll_registration_vs_wait.md)
-for why):
+for why) and fell back to filtering by `comm` instead. Sourcing the PID
+from `docker inspect` on the host side instead - the Docker daemon's own
+bookkeeping, not a `/proc` scan from inside another container - avoids
+that problem and reliably isolates a single container's process, even
+with other same-`comm` processes running alongside it:
 ```sh
 docker compose -f ../tools/analysis/compose.yml up -d --build
-docker compose -f ../tools/analysis/compose.yml exec analysis bash
-# inside the analysis container:
-bpftrace -e 'tracepoint:syscalls:sys_enter_futex /comm == "counter"/ { @[args.op] = count(); }'
+
+PID=$(docker inspect --format '{{.State.Pid}}' lab-go-counter-atomic)
+docker exec lab-analysis sh -c "bpftrace -e 'tracepoint:syscalls:sys_enter_futex /pid == $PID/ { @[args.op] = count(); }'"
 ```
 The tracepoint's `op` field encodes both the operation (`FUTEX_WAIT`,
 `FUTEX_WAKE`, ...) and flag bits (notably `FUTEX_PRIVATE_FLAG`) packed

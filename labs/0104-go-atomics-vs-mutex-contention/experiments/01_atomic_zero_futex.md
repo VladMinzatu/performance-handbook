@@ -23,8 +23,9 @@ ops/sec=44260936 goroutines=33
 ops/sec=12927339 goroutines=33
 
 ```
+Already a substantial gap at the default `WORKERS=32` - atomic is doing ~3.4x the throughput of mutex, before we've even looked at a single syscall trace.
 
-In case it's not already running, start the shared analysis container:
+Now, in case it's not already running, start the shared analysis container:
 ```sh
 docker compose -f ../tools/analysis/compose.yml up -d --build
 ```
@@ -42,8 +43,10 @@ PID=34391
 Attaching 1 probe...
 @: 0
 ```
+Zero `futex` calls at `WORKERS=32`.
 
 Now let's push `WORKERS` much higher - recreate `counter-atomic` with `WORKERS=200` (a one-off `docker run`, since `compose.yml` pins `WORKERS=32`) and repeat the same trace:
+
 ```sh
 docker stop lab-go-counter-atomic
 docker rm lab-go-counter-atomic
@@ -65,3 +68,4 @@ Attaching 1 probe...
 
 @: 0
 ```
+Still zero, at more than 6x the goroutine count. Confirms the first Hypothesis: `atomic.AddInt64` has no kernel path to escalate into regardless of how many goroutines are contending for the same counter - `WORKERS=32` and `WORKERS=200` are indistinguishable from `futex`'s point of view, both zero.
