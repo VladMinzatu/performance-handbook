@@ -43,41 +43,6 @@ events, whether `WORKERS` is 1 or 100 - `atomic.AddInt64` has no path
 into the kernel at all, so there's nothing for contention to escalate
 into.
 
-**Prediction 2 - mutex contention shows up directly as `futex` syscalls,
-and the rate tracks contention, not raw operation count.** With
-`WORKERS` well below `GOMAXPROCS`, `MODE=mutex` should show few or no
-`futex` calls - collisions are rare enough that most `Lock()` calls hit
-the uncontended fast path. Once `WORKERS` is pushed well past
-`GOMAXPROCS` (this lab's default: `WORKERS=32` against a `GOMAXPROCS`
-that will typically be far smaller in a container), far more goroutines
-should be simultaneously trying to acquire the same lock than can
-possibly be running at once, forcing many of them onto the slow,
-kernel-visible path - so the `futex` syscall rate should rise
-substantially with `WORKERS`, even though every configuration is doing
-the exact same kind of work (incrementing a counter, as fast as
-possible).
-
-**Prediction 3 - that kernel round-trip has a real throughput cost.**
-`MODE=mutex`'s reported `ops/sec` should be meaningfully lower than
-`MODE=atomic`'s at the same `WORKERS`, and the gap should widen as
-`WORKERS` grows past `GOMAXPROCS` - more contention means more parking
-and waking through the kernel, which is strictly more expensive than the
-userspace-only atomic path, on top of the serialization both approaches
-already have to pay for (only one goroutine can hold the lock, or land
-the winning CAS, at a time either way).
-
-**Prediction 4 (stretch) - the runtime avoids the kernel when it can, so
-`futex` calls shouldn't scale 1:1 with contended `Lock()` attempts.**
-Because of the adaptive spin, some short-lived contention should resolve
-without ever reaching `futex` at all. Comparing the `futex` call rate
-against the throughput gap from Prediction 3 at a couple of different
-`WORKERS` values should show the relationship isn't perfectly linear -
-consistent with the same pattern seen in
-[lab 0102](../0102-go-netpoller-epoll/README.md) (netpoller) and
-[lab 0103](../0103-go-blocking-syscalls-vs-network-io/README.md) (thread
-creation): the Go runtime treats the kernel as a last resort, not a first
-one.
-
 ## Setup
 
 Build and start both containers - identical image, identical `WORKERS`,
