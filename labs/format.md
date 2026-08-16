@@ -26,6 +26,7 @@ Backlog:
   - Goroutine-per-connection scaling ceiling. 
   - Context cancellation leaks in request handling. 
   - Client-side connection pooling and TIME_WAIT churn. (fresh TCP connection per request)
+  - futex use in runtime scheduling
   - Nagle's algorithm vs. delayed ACK. 
   - GC pause impact and GOGC/GOMEMLIMIT tuning
   - Escape analysis and hidden heap allocations
