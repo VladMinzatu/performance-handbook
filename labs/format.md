@@ -17,6 +17,7 @@ Backlog:
 - Storage
 - Networking and protocols
   - connection pooling in different runtimes
+  - http2/3 improvements
 - Concurrency & Synchronization
 - Go
   - GOMAXPROCS vs. container CPU limits.
