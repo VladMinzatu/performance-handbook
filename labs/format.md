@@ -37,7 +37,9 @@ Backlog:
   - async and event loop
   - multiprocessing
 - Rust
-  - async
+  - async await and libraries (tokio, async-std)
+  - data sharing and synchronization
+  - channels for communication (vs Go)
 - Virtualization
 - Containers & cgroup
 - Databases
