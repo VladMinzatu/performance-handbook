@@ -32,6 +32,11 @@ Backlog:
   - GC pause impact and GOGC/GOMEMLIMIT tuning
   - Escape analysis and hidden heap allocations
   - Mutex contention vs. channels, at the futex level
+- Python
+  - async and event loop
+  - multiprocessing
+- Rust
+  - async
 - Virtualization
 - Containers & cgroup
 - Databases
