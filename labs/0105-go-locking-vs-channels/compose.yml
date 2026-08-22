@@ -1,0 +1,51 @@
+# System under test for lab 0105: two coordination patterns, each run
+# twice (MECH=mutex vs MECH=channel) - identical logical workload,
+# differing only in the synchronization mechanism. No network
+# reachability needed between any of them - like lab 0104, everything
+# here is in-process; the OS-level view (see README, once written)
+# observes each container by PID via the shared `analysis` container's
+# `pid: host`.
+services:
+  # Shared-state coordination: WORKERS goroutines all need the same
+  # counter incremented. mutex = direct lock/increment/unlock. channel =
+  # goroutines request the increment from a single owner goroutine over
+  # an unbuffered channel.
+  counter-mutex:
+    build:
+      context: .
+      target: counter
+    container_name: lab-go-counter-mutex
+    environment:
+      MECH: "mutex"
+      WORKERS: "32"
+
+  counter-channel:
+    build:
+      context: .
+      target: counter
+    container_name: lab-go-counter-channel
+    environment:
+      MECH: "channel"
+      WORKERS: "32"
+
+  # Pure hand-off coordination: PARTICIPANTS goroutines pass a token
+  # around a ring, forever - no shared state being protected, just the
+  # coordination cost itself. mutex = sync.Mutex + sync.Cond turn-taking.
+  # channel = a ring of unbuffered channels.
+  pingpong-mutex:
+    build:
+      context: .
+      target: pingpong
+    container_name: lab-go-pingpong-mutex
+    environment:
+      MECH: "mutex"
+      PARTICIPANTS: "4"
+
+  pingpong-channel:
+    build:
+      context: .
+      target: pingpong
+    container_name: lab-go-pingpong-channel
+    environment:
+      MECH: "channel"
+      PARTICIPANTS: "4"
