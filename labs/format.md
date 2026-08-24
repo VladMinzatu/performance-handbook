@@ -47,6 +47,7 @@ Backlog:
 - Databases
 - Language runtimes and GC
 - GPUs / accelerators
+  - vLLM tracing and optimization
 - Compilers
 - NUMA
 - Filesystems
