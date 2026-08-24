@@ -25,6 +25,7 @@ Backlog:
   - Blocking syscalls vs. network I/O — different thread-growth behavior. (not all blocking is equal) 
   - atomic/lock contention
   - lock vs channel scheduling/coordination overhead
+  - go timers and resource/goroutine + missed tick while blocked
   - Goroutine-per-connection scaling ceiling. 
   - Context cancellation leaks in request handling. 
   - Client-side connection pooling and TIME_WAIT churn. (fresh TCP connection per request)
