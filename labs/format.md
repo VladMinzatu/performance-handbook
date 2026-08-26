@@ -36,6 +36,7 @@ Backlog:
   - Escape analysis and hidden heap allocations
   - Mutex contention vs. channels, at the futex level
   - go simd (see 1.27)
+  - io_uring performance improvement (a la PG)
 - Python
   - async and event loop
   - multiprocessing
