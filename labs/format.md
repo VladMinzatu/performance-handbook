@@ -48,6 +48,7 @@ Backlog:
 - Containers & cgroup
 - Databases
 - Language runtimes and GC
+- Assembly optimizations
 - GPUs / accelerators
   - vLLM tracing and optimization
 - Compilers
