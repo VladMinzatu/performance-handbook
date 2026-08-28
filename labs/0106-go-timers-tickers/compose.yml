@@ -1,0 +1,27 @@
+# System under test for lab 0106: the same timer/ticker binary run
+# twice, identical TICKERS/INTERVAL_MS/WORK_MS, differing only in
+# whether firings are consumed via a persistent time.Ticker loop or a
+# self-rescheduling time.AfterFunc chain. WORK_MS is deliberately set
+# above INTERVAL_MS so the interesting behavior (dropped ticks / stretched
+# cadence) is already visible out of the box. No network reachability
+# needed - everything here is in-process.
+services:
+  timer-ticker:
+    build: .
+    container_name: lab-go-timer-ticker
+    environment:
+      MODE: "ticker"
+      TICKERS: "1"
+      INTERVAL_MS: "100"
+      WORK_MS: "250"
+      REPORT_SEC: "5"
+
+  timer-afterfunc:
+    build: .
+    container_name: lab-go-timer-afterfunc
+    environment:
+      MODE: "afterfunc"
+      TICKERS: "1"
+      INTERVAL_MS: "100"
+      WORK_MS: "250"
+      REPORT_SEC: "5"
