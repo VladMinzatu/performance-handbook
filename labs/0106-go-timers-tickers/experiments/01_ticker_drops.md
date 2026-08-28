@@ -26,6 +26,8 @@ What happens is, the `Ticker` fires on its own fixed wall-clock schedule regardl
 Thus, "succeed immediately" is purely a property of *the channel*, not of our goroutine's state: the runtime never inspects what our goroutine is doing. A channel send (blocking or not) only has two ways to succeed:
 hand the value directly to a goroutine that's already parked in a receive on that channel right now, or, failing that, place it in a free buffer slot. While we're in `time.Sleep()`, we're simply not one of the (possibly zero) goroutines parked on `<-ticker.C` - and the buffer's one slot is still holding whatever the *previous* tick left there, since we haven't drained it yet. So the non-blocking send finds neither a waiting receiver nor free buffer space, and gives up instantly. No inspection of "is the consumer busy" happens anywhere - it falls out entirely from "is anyone receiving right now, and is there room."
 
+So imagine this sequence of events: ` 1. timer fires #1 ; 2. we consume and start working; 3. timer fires #2; 4. timer fires #3; 5. we can consume again.`. In this case, we consume #2 and skip #3 — the buffer keeps whichever tick arrives first after being drained, not whichever arrives last before you come back. 
+
 ### A consumer faster than the interval
 
 First, stop the running containers:
