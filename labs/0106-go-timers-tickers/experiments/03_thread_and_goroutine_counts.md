@@ -50,6 +50,10 @@ MODE=afterfunc TICKERS=1000: Threads:	9 | received=48000 (+48000) expected=50000
 MODE=ticker TICKERS=5000: Threads:	10 | received=245183 (+245183) expected=250000 goroutines_started=0 live_goroutines=5001
 MODE=afterfunc TICKERS=5000: Threads:	10 | received=235000 (+235000) expected=250000 goroutines_started=235000 live_goroutines=1
 ```
+It's not perfectly flat, threads do creep up from ~5 to ~9-10 - but that growth is bounded, not proportional to `TICKERS`: a 1000x increase (1→1000) still only costs a handful more threads, and 1000→5000 (5x more) barely moves it at all (9→10). Both modes converge to the same ceiling despite `TICKERS` spanning three orders of magnitude - consistent with thread count tracking something like available parallelism, not raw timer or goroutine count.
+
+The `live_goroutines` column is the more visible contrast between the two models, even though thread cost ends up the same: ticker mode holds one permanently-parked goroutine per ticker (`live_goroutines` tracks
+`TICKERS+1` exactly - 2, 101, 1001, 5001), while afterfunc's spawned goroutines are so short-lived they never accumulate at all (`live_goroutines=1` throughout, even at `TICKERS=5000`) - but the churn is there, just not accumulating and visible here.
 
 To clean up the containers, run:
 ```sh
