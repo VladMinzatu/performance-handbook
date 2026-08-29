@@ -17,6 +17,7 @@ received=28 (+14) expected=100 goroutines_started=28 live_goroutines=1
 received=42 (+14) expected=150 goroutines_started=42 live_goroutines=1
 received=56 (+14) expected=200 goroutines_started=56 live_goroutines=1
 ```
+We see that `received` and `goroutines_started` match exactly on every line - nothing is ever silently skipped, and every firing really does get its own goroutine. The rate (+14/report) matches the predicted `5000ms / (250+100)ms ≈ 14.3` almost exactly - cadence is `work + interval`, not `interval`.
 
 To check for different configurations of `WORK_MS` (keeping `INTERVAL_MS=100` fixed):
 ```sh
@@ -48,6 +49,15 @@ mode=afterfunc tickers=1 interval_ms=100 work_ms=500 GOMAXPROCS=8
 received=9 (+9) expected=50 goroutines_started=9 live_goroutines=2
 received=17 (+8) expected=100 goroutines_started=17 live_goroutines=2
 ```
+This shows that the formula holds across the board: `received`/`goroutines_started` stay locked together at every point too:
+
+| WORK_MS | predicted/report | observed |
+|---|---|---|
+| 50 | 33.3 | 32 |
+| 100 | 25.0 | 24 |
+| 500 | 8.3 | 8-9 |
+
+Consistently a hair under the prediction rather than over - most likely some fixed per-firing overhead (scheduling the goroutine, the `AfterFunc` call itself) on top of `work + interval`.
 
 To clean up the containers, run:
 ```sh
