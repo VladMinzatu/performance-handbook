@@ -1,0 +1,24 @@
+# System under test for lab 0107: one bounded producer/consumer workload,
+# run twice (MECH=channel vs MECH=cond) - identical logical workload,
+# differing only in how the bounded queue is implemented. No network
+# reachability needed between any of them - everything here is in-process.
+services:
+  workerpool-channel:
+    build:
+      context: .
+    container_name: lab-go-workerpool-channel
+    environment:
+      MECH: "channel"
+      PRODUCERS: "8"
+      CONSUMERS: "8"
+      QUEUE_CAP: "16"
+
+  workerpool-cond:
+    build:
+      context: .
+    container_name: lab-go-workerpool-cond
+    environment:
+      MECH: "cond"
+      PRODUCERS: "8"
+      CONSUMERS: "8"
+      QUEUE_CAP: "16"
