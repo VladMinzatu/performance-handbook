@@ -26,6 +26,7 @@ Backlog:
   - atomic/lock contention
   - lock vs channel scheduling/coordination overhead
   - go timers and resource/goroutine + missed tick while blocked
+  - go ringbuf for SPSC improvement
   - go backpressure & admission control
   - Goroutine-per-connection scaling ceiling. 
   - Context cancellation leaks in request handling. 
