@@ -47,7 +47,8 @@ Backlog:
   - channels for communication (vs Go)
 - Virtualization
 - Containers & cgroup
-- Databases
+- Databases (https://www.interdb.jp/pg/)
+  - postgres iouring
 - Language runtimes and GC
 - Assembly optimizations
 - GPUs / accelerators
