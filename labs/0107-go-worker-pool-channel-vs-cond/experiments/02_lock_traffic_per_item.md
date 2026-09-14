@@ -60,7 +60,7 @@ Attaching 1 probe...
 
 @locks: 47229454
 ```
-
+`channel`: 46,082,132 hits. `cond`: 47,229,454 hits - almost the same raw count, nowhere near the 2x Prediction 2 expected. But raw counts aren't the comparison that matters here (the two mechanisms don't process the same number of items in the window) - normalizing against throughput below is what actually tests the prediction.
 
 Next, grab each container's throughput from roughly the same window, to normalize lock count per item transferred rather than compare raw counts - the two mechanisms won't necessarily process the same number of items in 10 seconds:
 ```sh
@@ -76,8 +76,20 @@ produced/sec=3467870 consumed/sec=3467870 goroutines=17
 produced/sec=3671325 consumed/sec=3671324 goroutines=17
 ```
 
+Average `consumed/sec` over these three samples: `channel` ≈ 4,595,688,
+`cond` ≈ 3,539,224. Scaling each to the ~10s trace window and dividing
+into the lock counts above gives lock hits per item transferred:
+
+| mechanism | locks (10s) | items (10s, est.) | locks/item |
+|---|---|---|---|
+| channel | 46,082,132 | ~45,956,880 | ~1.00x |
+| cond | 47,229,454 | ~35,392,240 | ~1.33x |
+
+`channel` lands almost exactly on **one `lock2` pair per item** - a clean result that also validates the technique: a direct-handoff channel send/receive completes the whole transfer inside a single `hchan.lock` critical section, so one lock op per item is exactly what the mechanism should produce. `cond` comes in around **1.33 lock ops per item, not the ~2x Prediction 2 predicted**. The relative gap (cond ÷ channel ≈ 1.33x) is also smaller than the ~1.6x-1.7x *throughput* gap experiment 01 measured at this same configuration (`WORKERS=8`, `QUEUE_CAP=4`) - and this run's own throughput ratio (4,595,688 / 3,539,224 ≈ 1.30x) is itself lower than experiment 01's untraced 1.63x at that point. That discrepancy is a flag, not just noise: both containers were sustaining tens of millions of probe hits over 10 seconds, and `bpftrace` uprobes carry real per-hit overhead at that frequency - the trace itself was very likely perturbing throughput, and not necessarily by the same amount for both mechanisms, so the absolute ratios here should be read as directional, not precise.
+
+
 Clean up:
 ```sh
 docker rm -f lab-go-workerpool-channel lab-go-workerpool-cond
-docker compose -f compose.yml up -d --build
+docker compose -f compose.yml down
 ```
