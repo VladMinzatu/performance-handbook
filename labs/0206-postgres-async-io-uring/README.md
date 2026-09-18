@@ -83,7 +83,10 @@ of the AIO subsystem itself.
 
 ## Setup
 
-Start Postgres (18, the first version with `io_method`):
+Start Postgres (18, the first version with `io_method`) - `compose.yml`
+already sets `security_opt: seccomp:unconfined`, which `io_method=io_uring`
+needs (Docker's default seccomp profile blocks the `io_uring_*` syscalls
+outright, otherwise):
 ```sh
 docker compose -f compose.yml up -d
 ```
@@ -96,8 +99,9 @@ docker exec lab-postgres psql -U postgres -d labdb -c \
   "SELECT unnest(enumvals) FROM pg_settings WHERE name = 'io_method';"
 ```
 
-Load a table larger than `shared_buffers` so a scan can't be served
-entirely from Postgres's own cache:
+Load a table larger than `shared_buffers` (64MB, set in `compose.yml`)
+so a scan can't be served entirely from Postgres's own cache - 3M padded
+rows, ~750MB:
 ```sh
 docker cp seed.sql lab-postgres:/tmp/seed.sql
 docker exec lab-postgres psql -U postgres -d labdb -f /tmp/seed.sql
