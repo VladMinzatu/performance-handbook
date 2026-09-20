@@ -20,6 +20,8 @@ lab-oom-multi                  hog                         19846            1984
 lab-oom-single                 hog                         19811            19811 19790                       19811 hog              51200  
 ```
 
+Both processes land at essentially the same resident size (51200 pages ≈ 200MB) before being killed - expected, since the two hogs are structurally identical and only `CAP_MB` differs. The two rows are only distinguishable by container name and PID here - both show `comm=hog` - which is exactly the attribution `docker logs`/`ps` alone can't give: without `ig`, there'd be no way to tell these two kills apart at all, let alone confirm each one's actual size at the moment of death.
+
 Compare against what Docker itself reports for the same two containers - this is the direct comparison for Prediction 1:
 ```sh
 docker inspect lab-oom-single --format '{{.State.Status}} exitcode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}}'
@@ -30,6 +32,8 @@ producing output:
 exited exitcode=137 OOMKilled=true
 running exitcode=0 OOMKilled=true
 ```
+
+Confirms Predictions 1 and 3 directly. `lab-oom-single` had only one process, so killing it ends the container outright - `exited`, `137`, `OOMKilled=true`, the intuitive case. `lab-oom-multi` shows `running` and `OOMKilled=true` *simultaneously* - Docker recorded a real OOM kill against this container, yet it never stopped. Read on its own, `OOMKilled: true` on a container that's still running looks like a contradiction; it isn't, once the kill is known to have landed on a background process rather than the container's own PID 1.
 
 Check which of the two processes in `lab-oom-multi` is still alive - the direct evidence for Prediction 2 (which one got picked) and Prediction 3 (why the container didn't stop):
 ```sh
@@ -45,6 +49,8 @@ small holding 20 MB
 small holding 20 MB
 small holding 20 MB
 ```
+
+Only `small` is still logging - `big` is gone. Confirms Prediction 2: between two identically-named processes sharing one memory limit, the OOM killer picked the one actually holding more resident memory, not the one that started first or any other detail of process identity. It also closes the loop on the previous step: `big` was the container's non-essential background process, so losing it left the launcher script's `wait` - and the container - running, which is why `lab-oom-multi` stayed up despite the kill.
 
 Clean up when done:
 ```sh
