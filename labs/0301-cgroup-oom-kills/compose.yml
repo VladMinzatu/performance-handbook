@@ -1,0 +1,15 @@
+# System under test for lab 0301. No network reachability needed - `ig`
+# traces via the analysis container's shared PID namespace/cgroups, not
+# over the network, so neither service joins `labnet`.
+services:
+  hog-single:
+    build: .
+    container_name: lab-oom-single
+    mem_limit: 100m
+    command: ["hog"]
+
+  hog-multi:
+    build: .
+    container_name: lab-oom-multi
+    mem_limit: 100m
+    command: ["/usr/local/bin/run-both.sh"]
