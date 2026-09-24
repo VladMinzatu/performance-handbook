@@ -27,6 +27,7 @@ Backlog:
   - lock vs channel scheduling/coordination overhead
   - go timers and resource/goroutine + missed tick while blocked
   - go ringbuf for SPSC improvement
+  - Go 1.27 portable SIMD (asm vs Python numpy) 
   - go backpressure & admission control
   - Goroutine-per-connection scaling ceiling. 
   - Context cancellation leaks in request handling. 
