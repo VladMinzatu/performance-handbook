@@ -1,0 +1,7 @@
+# System under test: the compiled Go benchmark binary plus NumPy, in one
+# arm64 Linux container, pinned to a fixed CPU budget so runs are comparable.
+services:
+  simd:
+    build: .
+    container_name: lab-go-simd
+    cpus: 2
