@@ -65,7 +65,10 @@ limit ends something, a pids limit only says "not now".
 limit with zero execs.** A Go program blocking many goroutines in
 syscalls needs many OS threads. Under a low `pids.max` it should hit the
 limit through thread creation alone: `pids.events` `max` increments and
-`trace_exec` shows nothing at all. This makes "trace the execs" the wrong
+`trace_exec` shows nothing at all. Unlike the fork storm, the Go runtime
+cannot handle a refused thread gracefully - it aborts the process
+(`runtime: failed to create new OS thread`), so here the refusal does end
+the container. This makes "trace the execs" the wrong
 tool for a whole class of pids-limit incidents, and shows how the failure
 looks from inside a Go process (the runtime cannot create an OS thread).
 
@@ -80,13 +83,16 @@ docker compose -f compose.yml up -d --build
   each failure - the case for Predictions 1-3.
 - A thread-heavy container with a low `pids.max`, running a Go workload
   that parks many goroutines in blocking syscalls - the case for
-  Prediction 4.
+  Prediction 4. It exits within seconds when the runtime is refused a
+  thread; `docker logs lab-pids-threads` shows the abort.
 
-Confirm the limit and watch it fill, from inside the container's own
-cgroup view:
+Confirm the limit and watch it fill. Read the cgroup files from outside
+the container: a `docker exec` into a container that is at its limit
+needs a free slot for the new process too, so it fails with
+`procReady not received` exactly when you need it most.
 ```sh
-docker exec lab-pids-storm cat /sys/fs/cgroup/pids.max /sys/fs/cgroup/pids.current
-docker exec lab-pids-storm cat /sys/fs/cgroup/pids.events
+PID=$(docker inspect --format '{{.State.Pid}}' lab-pids-storm)
+docker exec lab-analysis nsenter -t 1 -C -m sh -c "cd /sys/fs/cgroup/\$(cut -d: -f3 /proc/$PID/cgroup) && grep . pids.max pids.current pids.events"
 ```
 
 Watch the successful execs, attributed by container:
