@@ -45,7 +45,11 @@ Dockerfile.
    ```sh
    docker compose -f examples/postgres/compose.yml up -d
    ```
-2. Get a shell in the analysis container:
+2. Run commands agains the analysis container:
+   ```sh
+   sudo docker exec lab-analysis ig run trace_exec:latest --containername test-trace-exec
+   ```
+   Alternatively, get a shell in the analysis container:
    ```sh
    docker compose -f analysis/compose.yml exec analysis bash
    ```
