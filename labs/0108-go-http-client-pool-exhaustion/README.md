@@ -48,12 +48,13 @@ calls.
 
 **Prediction 1 - throughput through the pool is capped at
 `MAX_CONNS / SERVICE_MS`, regardless of offered load.** With
-`MAX_CONNS=20` and `SERVICE_MS=50`, the ceiling is 400 req/s. Below it,
-edge's latency should match inventory's service time. Above it, edge's
-completed rate should stay pinned at ~400 req/s, and its latency should
-grow steadily over time instead of settling, while inventory's
-self-reported latency stays at ~50ms and its request rate stays at ~400
-req/s. Raising inventory's service time at runtime (with load held below
+`MAX_CONNS=20` and `SERVICE_MS=50`, the ceiling is 400 req/s (in
+practice a little lower, since a round trip takes a bit more than the
+50ms of service time). Below it, edge's latency should match inventory's
+service time. Above it, edge's completed rate should stay pinned at the
+ceiling, and its latency should grow steadily over time instead of
+settling, while inventory's self-reported latency stays at ~50ms and its
+request rate stays at the same ceiling. Raising inventory's service time at runtime (with load held below
 the original ceiling) should cause the same collapse, since a slower
 downstream lowers the ceiling.
 
@@ -104,7 +105,7 @@ docker compose -f ../tools/analysis/compose.yml up -d --build
   `SERVICE_MS` (default 50ms), at most `WORKERS` (default 200) at a time.
   Prints its own request rate and latency once per second. Its service
   time can be changed at runtime:
-  `docker exec lab-pool-edge wget -qO- 'http://inventory:8080/admin/service-time?ms=100'`.
+  `docker exec lab-analysis curl -s 'http://inventory:8080/admin/service-time?ms=100'`.
 - `lab-pool-edge` - the client service. `GET /checkout` makes one call to
   inventory through a shared `http.Client` with `MaxConnsPerHost=MAX_CONNS`
   (default 20; `MaxIdleConnsPerHost` set to the same value, so idle
