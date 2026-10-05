@@ -1,16 +1,87 @@
-Idea: organize labs around the systems performance debugging, tuning and understanding loop:
-- Form a hypothesis based upon our current understanding
-- Gather evidence meant to prove or disprove the hypothesis
-- Analyze data and update understanding
-- Repeat until system is sufficiently understood / well performing.
+Lab format (current):
+- One focused takeaway per lab, answering mainly: how to use/tune the
+  mechanism in production, and how to diagnose it when it goes wrong. A
+  topic with several takeaways becomes several labs (e.g. a series on Go
+  HTTP client connection pools), not one lab with many predictions.
+- Topic-oriented: a mechanism with a clear connection to the kinds of real
+  systems that rely on it, pushed to where it reaches its limits or fails.
+- Tools most relevant in production, prioritizing `ig`, `bpftrace` and
+  `perf`.
+- Each lab is self-contained: no references to other labs, and no
+  narration of sandbox/tooling backstory.
+- README structure (reference: [0108](./0108-go-http-client-idle-pool/README.md)):
+  - `# <Mechanism>: <takeaway>` title, then one line on how the lab uses
+    the shared [tools/](./tools/README.md) infrastructure.
+  - `## Background` - the mechanism, its defaults, the systems that hit
+    it, what it costs, and how it shows up from the outside.
+  - `## Hypotheses` - 2-4 bold, numbered predictions, all serving the one
+    takeaway, with concrete expected numbers/signals; optionally one
+    marked (stretch).
+  - `## Setup` - start commands, one bullet per container (what it does,
+    its knobs and defaults), then the observation commands the
+    experiments use (logs, `ig`, `ss` via `nsenter`, cgroup lookup for
+    `bpftrace` filters), and how to change knobs.
+  - `## Experiments` (link to `./experiments`) and `## Tear down`.
+- Experiment files (`experiments/NN_<name>.md`): a `##` title, which
+  predictions it tests and why, then commands each followed by
+  "producing output:" with real captured output and an interpretation.
 
-Tooling: experiments run in Docker (via OrbStack's Linux VM) using the
-reusable infrastructure in [tools/](./tools/README.md) - a long-running
-privileged "analysis" container (bpftrace, Inspektor Gadget, profilers,
-benchmarking tools) plus a per-experiment compose file for the system under
-test.
+Topic backlog:
+- CPU
+- Scheduling
+- Memory
+- Storage
+- Networking and protocols
+  - connection pooling in different runtimes
+  - http2/3 improvements
+- Concurrency & Synchronization
+- Go
+  - GOMAXPROCS vs. container CPU limits.
+  - Netpoller collapsing goroutines onto epoll. 
+  - Blocking syscalls vs. network I/O — different thread-growth behavior. (not all blocking is equal) 
+  - atomic/lock contention
+  - lock vs channel scheduling/coordination overhead
+  - go timers and resource/goroutine + missed tick while blocked
+  - go ringbuf for SPSC improvement
+  - Go 1.27 portable SIMD (asm vs Python numpy) 
+  - go backpressure & admission control
+  - Goroutine-per-connection scaling ceiling. 
+  - Context cancellation leaks in request handling. 
+  - Client-side connection pooling and TIME_WAIT churn. (fresh TCP connection per request)
+  - HTTP client connection pool series (one takeaway per lab):
+    - 0108 idle pool: MaxIdleConnsPerHost default 2 -> connection churn, TIME_WAIT, port exhaustion (ig trace_tcp, ss -s)
+    - max conns: MaxConnsPerHost as a queue with a throughput ceiling; size from rate x degraded latency (ss -tin, goroutine dump in getConn)
+    - TLS churn under a CPU limit: run-queue latency tells waiting-for-CPU from waiting-on-something-else (bpftrace runqlat, cpu.stat)
+    - in-flight memory when the downstream slows: unlimited vs capped pool, neither bounds the client (memory.stat anon/sock, ss -tm)
+    - load shedding: a fail-fast limit in front of the pool bounds memory and accepted latency
+  - futex use in runtime scheduling
+  - Nagle's algorithm vs. delayed ACK. 
+  - GC pause impact and GOGC/GOMEMLIMIT tuning
+  - Escape analysis and hidden heap allocations
+  - Mutex contention vs. channels, at the futex level
+  - go simd (see 1.27)
+  - io_uring performance improvement (a la PG)
+- Python
+  - async and event loop
+  - multiprocessing
+- Rust
+  - async await and libraries (tokio, async-std)
+  - data sharing and synchronization
+  - channels for communication (vs Go)
+- Virtualization
+- Containers & cgroup
+- Databases (https://www.interdb.jp/pg/)
+  - postgres iouring
+- Language runtimes and GC
+- Assembly optimizations
+- GPUs / accelerators
+  - vLLM tracing and optimization
+- Compilers
+- NUMA
+- Filesystems
+- Distributed systems
 
-Scenario backlog (preferred: a realistic symptom -> investigation with the toolset, ig/bpftrace where possible):
+Scenario backlog (on hold - the lab format above is preferred for now; a realistic symptom -> investigation with the toolset, ig/bpftrace where possible):
 - Everyday incidents
   - "Service is slow, which code?" - baseline CPU profiling workflow: flame graph -> hot path (JSON/regex/logging) -> fix -> diff profile (perf, pprof, py-spy, Pyroscope)
     - Go CPU profiling loop: pprof flame graph -> per-request hot path (regex compile, JSON reflection) -> fix -> `pprof -diff_base` confirms the frame shrank
@@ -134,52 +205,3 @@ Scenario backlog (preferred: a realistic symptom -> investigation with the tools
     - CPU neighbour: victim's cpu.pressure rises, runqlat attribution, cpu.weight mitigation
     - Memory neighbour: victim's page cache evicted (memory.pressure, cachestat), memory.low protection
     - I/O neighbour: io.pressure, ig top_block_io attribution, io.weight/io.max mitigation
-
-Topic backlog:
-- CPU
-- Scheduling
-- Memory
-- Storage
-- Networking and protocols
-  - connection pooling in different runtimes
-  - http2/3 improvements
-- Concurrency & Synchronization
-- Go
-  - GOMAXPROCS vs. container CPU limits.
-  - Netpoller collapsing goroutines onto epoll. 
-  - Blocking syscalls vs. network I/O — different thread-growth behavior. (not all blocking is equal) 
-  - atomic/lock contention
-  - lock vs channel scheduling/coordination overhead
-  - go timers and resource/goroutine + missed tick while blocked
-  - go ringbuf for SPSC improvement
-  - Go 1.27 portable SIMD (asm vs Python numpy) 
-  - go backpressure & admission control
-  - Goroutine-per-connection scaling ceiling. 
-  - Context cancellation leaks in request handling. 
-  - Client-side connection pooling and TIME_WAIT churn. (fresh TCP connection per request)
-  - futex use in runtime scheduling
-  - Nagle's algorithm vs. delayed ACK. 
-  - GC pause impact and GOGC/GOMEMLIMIT tuning
-  - Escape analysis and hidden heap allocations
-  - Mutex contention vs. channels, at the futex level
-  - go simd (see 1.27)
-  - io_uring performance improvement (a la PG)
-- Python
-  - async and event loop
-  - multiprocessing
-- Rust
-  - async await and libraries (tokio, async-std)
-  - data sharing and synchronization
-  - channels for communication (vs Go)
-- Virtualization
-- Containers & cgroup
-- Databases (https://www.interdb.jp/pg/)
-  - postgres iouring
-- Language runtimes and GC
-- Assembly optimizations
-- GPUs / accelerators
-  - vLLM tracing and optimization
-- Compilers
-- NUMA
-- Filesystems
-- Distributed systems
