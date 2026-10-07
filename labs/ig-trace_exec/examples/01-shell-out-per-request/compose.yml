@@ -1,0 +1,14 @@
+# System under test for ig-trace_exec/examples/01. Joins `labnet` so the
+# analysis container can load it with wrk.
+services:
+  checksum:
+    build: .
+    container_name: exec01-checksum
+    environment:
+      - MODE=${MODE:-shell}
+    cpus: 1
+    networks: [labnet]
+
+networks:
+  labnet:
+    external: true
