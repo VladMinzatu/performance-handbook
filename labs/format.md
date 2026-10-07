@@ -25,6 +25,8 @@ Lab format (current):
 - Experiment files (`experiments/NN_<name>.md`): a `##` title, which
   predictions it tests and why, then commands each followed by
   "producing output:" with real captured output and an interpretation.
+- Keep it focused on one setting/configuration: what it does, where its
+  limits are, and how to detect when you've hit them.
 
 Topic backlog:
 - CPU
