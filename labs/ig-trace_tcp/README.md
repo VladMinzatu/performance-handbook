@@ -96,6 +96,6 @@ means connections are reused.
 
 ## Examples
 
-Coming next:
-1. Go HTTP client response bodies not drained/closed: a new connection
-   per request instead of a reused one.
+1. [Unread response bodies](./examples/01-unread-response-body/README.md) -
+   a Go client that checks status codes without reading or closing the
+   body, so every request opens a new connection.
