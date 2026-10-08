@@ -1,0 +1,22 @@
+# System under test for ig-trace_tcp/examples/01. Joins `labnet`, which
+# the analysis container also uses.
+services:
+  server:
+    build: .
+    container_name: tcp01-server
+    command: ["server"]
+    networks: [labnet]
+
+  client:
+    build: .
+    container_name: tcp01-client
+    command: ["client"]
+    depends_on: [server]
+    environment:
+      - BODY=${BODY:-leak}
+      - RATE=${RATE:-200}
+    networks: [labnet]
+
+networks:
+  labnet:
+    external: true
