@@ -115,4 +115,6 @@ load and compare the total count and where the peaks are.
 
 ## Examples
 
-None yet.
+1. [fsync per write](./examples/01-fsync-per-write/README.md) - an
+   event-ingest service that fsyncs every event before replying, against
+   group commit with the same durability.
