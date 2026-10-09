@@ -1,0 +1,19 @@
+# System under test for ig-profile_blockio/examples/01. Joins `labnet` so
+# the analysis container can load it with wrk. The log is on a named
+# volume, not the container's writable layer.
+services:
+  ingest:
+    build: .
+    container_name: blk01-ingest
+    environment:
+      - SYNC=${SYNC:-each}
+    volumes:
+      - events:/data
+    networks: [labnet]
+
+volumes:
+  events:
+
+networks:
+  labnet:
+    external: true
