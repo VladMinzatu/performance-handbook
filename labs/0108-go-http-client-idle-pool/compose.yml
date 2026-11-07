@@ -1,0 +1,25 @@
+# System under test for 0108. Joins `labnet`, which the analysis
+# container also uses.
+services:
+  backend:
+    build: .
+    container_name: lab-go-idlepool-backend
+    command: ["backend"]
+    environment:
+      - SERVICE_MIN_MS=${SERVICE_MIN_MS:-10}
+      - SERVICE_MAX_MS=${SERVICE_MAX_MS:-40}
+    networks: [labnet]
+
+  client:
+    build: .
+    container_name: lab-go-idlepool-client
+    command: ["client"]
+    depends_on: [backend]
+    environment:
+      - RATE=${RATE:-300}
+      - MAX_IDLE_CONNS_PER_HOST=${MAX_IDLE_CONNS_PER_HOST:-0}
+    networks: [labnet]
+
+networks:
+  labnet:
+    external: true
