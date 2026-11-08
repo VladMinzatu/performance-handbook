@@ -97,18 +97,102 @@ thousands.
 a new connection.** At 300 req/s to a backend that takes 10-40ms (about
 7-8 calls in flight on average, more during bursts), the kernel's
 `tcp_connect` count for the client's cgroup should be a large fraction of
-the request rate: tens of connects per second or more, not about 0. The
-client's `httptrace` dial share should agree. `TIME_WAIT` sockets in the
-client's network namespace should settle at about connect rate × 60, in
-the thousands.
+the request rate: on the order of 100 connects per second, a few tenths
+of a connect per call, not about 0. The client's own count of dials
+should agree with it, and so should the backend's count of accepted
+connections. There should be more dials than calls on a new connection:
+the difference is dials that lost the race to a returned connection.
+`TIME_WAIT` sockets in the client's network namespace should settle at
+about connect rate × 60, in the thousands.
 
-**Prediction 2: the client is the side that closes.** Counting
-`tcp_time_wait` by cgroup should show essentially every `TIME_WAIT` entry
-in the client's cgroup and none in the backend's. The churn comes from
-the client's pool setting, not from the server's keep-alive behavior.
+**Prediction 2: the client is the side that closes.** The side that
+closes first moves the connection to `FIN_WAIT1` inside its own
+`close()` call, so that transition is counted against the right
+container's cgroup. (`TIME_WAIT` itself is usually entered in softirq
+context, where the cgroup is whatever happened to be running.) Counting
+`FIN_WAIT1` transitions per cgroup should show about one per connect in
+the client and none in the backend, and only the client should hold
+`TIME_WAIT` sockets. The churn comes from the client's pool setting, not
+from the server's keep-alive behavior.
 
 **Prediction 3: an idle limit at or above peak concurrency stops the
 churn.** With `MAX_IDLE_CONNS_PER_HOST=64` and the same load, the client
-should dial a handful of connections while warming up and then none at
-all. `ss` should show about 10-20 established connections to the
-backend, and the `TIME_WAIT` count should drain to 0 within 60s.
+should dial about one connection per call in flight during warmup, then
+none at all: 0 connects and 0 closes in a 10s window. `ss` should show
+about 10-20 established connections, the peak number of calls in flight
+rather than the average. The same local ports should show up in two
+snapshots taken 30s apart, and `TIME_WAIT` should stay at about 0.
+(Changing the setting recreates the client container and its network
+namespace, so earlier `TIME_WAIT` sockets disappear along with the old
+namespace. The test is that they don't come back.)
+
+## Setup
+
+Start the analysis container and the lab, from this lab's directory:
+```sh
+docker compose -f ../tools/analysis/compose.yml up -d --build
+docker compose -f compose.yml up -d --build
+```
+- `lab-go-idlepool-backend` - the downstream service. `GET /` sleeps for
+  a random time between `SERVICE_MIN_MS` and `SERVICE_MAX_MS` (default
+  10-40ms), so the number of calls in flight goes up and down. Logs
+  every 5s: requests served, connections accepted, connections open.
+- `lab-go-idlepool-client` - the service under study. Calls the backend
+  at `RATE` calls/s (default 300). The load is open loop: calls start
+  on schedule whether or not earlier ones have finished. It uses one
+  shared `http.Client` whose `Transport` is a clone of
+  `http.DefaultTransport` with only `MaxIdleConnsPerHost` changed, set
+  from `MAX_IDLE_CONNS_PER_HOST` (default `0`, meaning Go's default of
+  2). It reads every response body to the end, so the idle limit is the
+  only thing that stops a connection from being reused. Logs every 5s:
+  calls, errors, p50/p99, `new` (share of calls on a newly dialed
+  connection), `dials` (every connection dialed, used or not) and
+  `peak` (most calls in flight at once).
+
+Both are on `labnet`. Observation commands used in the experiments:
+```sh
+# each side's own view
+docker logs --tail 5 lab-go-idlepool-client
+docker logs --tail 5 lab-go-idlepool-backend
+
+# container IDs, for bpftrace's cgroup filters
+CLI=$(docker inspect --format '{{.Id}}' lab-go-idlepool-client)
+SRV=$(docker inspect --format '{{.Id}}' lab-go-idlepool-backend)
+
+# connects made by the client over 10s
+docker exec lab-analysis sh -c "timeout -s INT 10 bpftrace -e 'kprobe:tcp_connect /cgroup == cgroupid(\"/host/sys/fs/cgroup/docker/${CLI}\")/ { @connects = count(); }'"
+
+# which side closes first, over 10s (state 4 = FIN_WAIT1)
+docker exec lab-analysis sh -c "timeout -s INT 10 bpftrace -e '
+tracepoint:sock:inet_sock_set_state /args.newstate == 4 && cgroup == cgroupid(\"/host/sys/fs/cgroup/docker/${CLI}\")/ { @closed_first[\"client\"] = count(); }
+tracepoint:sock:inet_sock_set_state /args.newstate == 4 && cgroup == cgroupid(\"/host/sys/fs/cgroup/docker/${SRV}\")/ { @closed_first[\"backend\"] = count(); }'"
+
+# established and TIME_WAIT sockets, in a container's network namespace
+PID=$(docker inspect --format '{{.State.Pid}}' lab-go-idlepool-client)
+docker exec lab-analysis nsenter --net=/proc/$PID/ns/net ss -tanH state established | wc -l
+docker exec lab-analysis nsenter --net=/proc/$PID/ns/net ss -tanH state time-wait | wc -l
+```
+
+To change the idle limit (or `RATE`), set it when recreating the
+client. The backend keeps running:
+```sh
+MAX_IDLE_CONNS_PER_HOST=64 docker compose -f compose.yml up -d client
+```
+
+## Experiments
+
+See [Experiments directory](./experiments):
+1. [Churn with the default idle limit](./experiments/01_churn_with_default.md) -
+   Predictions 1 and 2.
+2. [An idle pool sized for peak concurrency](./experiments/02_sized_idle_pool.md) -
+   Prediction 3.
+
+## Tear down
+
+```sh
+docker compose -f compose.yml down
+```
+To stop the analysis container as well:
+```sh
+docker compose -f ../tools/analysis/compose.yml down
+```
