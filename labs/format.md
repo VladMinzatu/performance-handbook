@@ -48,6 +48,9 @@ Topic backlog:
   - Go 1.27 portable SIMD (asm vs Python numpy) 
   - go backpressure & admission control
   - Goroutine-per-connection scaling ceiling. 
+  - Go vs. tokio runtime design (one takeaway per lab):
+    - 0110 preemption: a CPU-bound handler stalls tokio workers, not Go (epoll_wait gaps, ss Recv-Q); fix with spawn_blocking
+    - memory per idle connection: goroutine stack + bufio vs. future state (memory.current / conns)
   - Context cancellation leaks in request handling. 
   - Client-side connection pooling and TIME_WAIT churn. (fresh TCP connection per request)
   - HTTP client connection pool series (one takeaway per lab):
