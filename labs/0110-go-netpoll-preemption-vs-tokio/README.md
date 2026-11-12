@@ -1,8 +1,8 @@
 # Preemptive vs. cooperative scheduling: a CPU-bound handler stalls tokio, not Go
 
 Uses the shared lab infrastructure in [tools/](../tools/README.md). The
-`analysis` container's `bpftrace` and `ss` show the stall from the
-outside, without any help from the servers' own code.
+`analysis` container's `bpftrace` shows the stall from the outside,
+without any help from the servers' own code.
 
 ## Background
 
@@ -67,16 +67,14 @@ The failure doesn't look like overload. CPU usage is high but not
 necessarily at the limit, error rates stay at zero, and the expensive
 endpoint performs fine. Fast, unrelated endpoints get slow: their
 latency jumps to about the duration of the expensive call, and in steps
-rather than smoothly. From the outside, two signals give it away:
-
-- **`epoll` stops being called.** A healthy runtime under load calls
-  `epoll_wait` every few milliseconds, from some thread. A stalled one
-  goes for as long as the expensive call takes without calling it at
-  all. The longest gap between `epoll_wait` calls across the process is
-  the runtime's worst scheduling delay.
-- **Received data sits unread.** `ss` shows a non-zero `Recv-Q` on the
-  server's established connections: requests the kernel has received and
-  no task has read yet.
+rather than smoothly. From the outside, the giveaway is that **`epoll`
+stops being called.** A healthy runtime under load calls `epoll_wait`
+every few milliseconds, from some thread. A stalled one goes for as long
+as the expensive call takes without calling it at all. The longest gap
+between `epoll_wait` calls across the process approximates the runtime's
+worst delay in noticing new work: about 10ms for Go, whose `sysmon`
+polls on that interval, and the length of the longest computation for a
+stalled tokio runtime.
 
 Inside the process, `tokio-console` and tokio's runtime metrics show the
 same thing as long task poll times. Go's `runtime/metrics` has the
@@ -103,26 +101,31 @@ handles the computation, not from a slower HTTP stack.
 **Prediction 2: with the computation inline in the handler, tokio's fast
 requests wait for the slow ones, and Go's don't.** On the tokio server
 (`HEAVY_MODE=inline`), `/cheap` latency should jump to the scale of a
-`/heavy` call: p50 in the tens of milliseconds and p99 of 100-200ms,
-with no errors and no drop in `/cheap` throughput once the backlog is
-served. On the Go server, with the same handler code and the same 2
-workers, `/cheap` p99 should stay around 10-20ms, set by the 10ms
-preemption and `epoll` polling interval, so about 10x lower than tokio's.
+`/heavy` call: p50 around half of one (about 100ms, the average
+remaining time of the computation a request arrives behind) and p99 of
+about 200ms. There should be no errors and no drop in `/cheap`
+throughput once the backlog is served. On the Go server, with the same
+handler code and the same 2 workers, `/cheap` p50 should stay at a few
+milliseconds and p99 around 20ms, set by the 10ms preemption and `epoll`
+polling interval: about 10x lower than tokio's.
 
 **Prediction 3: from the outside, the stall shows up as gaps in
-`epoll_wait` and unread data in `Recv-Q`.** Counting the time between
-consecutive `epoll_wait` calls across all the server's threads, the
-inline tokio server should go about 100-200ms without calling it, while
-the Go server's longest gap should stay around 10ms. Snapshots of `ss`
-on the tokio server should usually show some connections with a
-non-zero `Recv-Q`; on the Go server they should almost always be 0.
+`epoll_wait`.** Counting the time between consecutive `epoll_wait` calls
+across all the server's threads, the inline tokio server should
+regularly go about 200ms without calling it. The Go server's gaps should
+cluster at about 10ms, `sysmon`'s polling interval, with rare outliers of
+a few tens of milliseconds. Per-thread CPU doesn't tell them apart: in
+both servers, the 2 worker threads are at about 100%.
 
-**Prediction 4: moving the computation to `spawn_blocking` fixes tokio.**
-With `HEAVY_MODE=blocking`, the same load should bring tokio's `/cheap`
-p99 back to a few milliseconds, at or below Go's, and its longest
-`epoll_wait` gap down to the scale of the request interval (about 5ms).
-The 2 cores are still fully busy computing; the difference is that the
-kernel, not the task, now decides when the workers get to run.
+**Prediction 4: moving the computation to `spawn_blocking` fixes tokio,
+and beats Go.** With `HEAVY_MODE=blocking`, the same load should bring
+tokio's `/cheap` p99 back to about 1-2ms, the same as with no `/heavy`
+traffic at all, and its `epoll_wait` gaps under about 10ms. The 2 cores
+are still fully busy computing, now on 2 extra threads from the blocking
+pool, with the workers nearly idle. The difference is that the kernel,
+not the task, decides when the workers get to run, and the kernel
+preempts in well under a millisecond when a worker wakes up, where Go's
+runtime waits for its 10ms timer.
 
 ## Setup
 
@@ -137,13 +140,15 @@ docker compose -f compose.yml up -d --build
   loop count is calibrated at startup to take `HEAVY_MS` (default 200)
   on an idle core, so both servers do the same work. `GOMAXPROCS` is set
   from `WORKERS` (default 2), and the container is pinned to 2 cores with
-  `cpuset`, so no CPU quota throttling gets mixed into the results.
+  `cpuset` (`GO_CPUS`, default `0-1`), so no CPU quota throttling gets
+  mixed into the results.
 - `lab-go-preempt-tokioserver` - the same server in Rust, on `tokio`'s
   multi-thread runtime with `hyper`. `worker_threads` is set from
-  `WORKERS` (default 2), with the same `cpuset` pinning and the same
-  calibrated loop. `HEAVY_MODE` picks where `/heavy` runs it: `inline`
-  (default) in the handler, or `blocking` inside
-  `tokio::task::spawn_blocking`.
+  `WORKERS` (default 2), with its own 2 cores (`TOKIO_CPUS`, default
+  `2-3`) and the same calibrated loop. `HEAVY_MODE` picks where `/heavy`
+  runs it: `inline` (default) in the handler, or `blocking` inside
+  `tokio::task::spawn_blocking`. Worker and blocking-pool threads are
+  both named `tokio-rt-worker`.
 - `lab-go-preempt-client` - the load generator, in Go. `TARGET` (`go` or
   `tokio`, default `go`) picks the server. It sends `RATE` (default 200)
   `/cheap` requests per second, open loop: requests start on schedule
@@ -151,10 +156,12 @@ docker compose -f compose.yml up -d --build
   `HEAVY_CONC` (default 2) `/heavy` requests in flight, closed loop: each
   finished one is replaced right away. Both use keep-alive connections,
   with an idle pool large enough that connections are never re-dialed.
-  Logs every 5s: `/cheap` count, errors, p50/p99/max, and `/heavy` count
-  and mean latency.
+  It waits for the server to answer before starting. Pinned to its own
+  cores (`CLIENT_CPUS`, default `4-5`). Logs every 5s: `/cheap` count,
+  errors, p50/p99/max, and `/heavy` count and mean latency.
 
-All three are on `labnet`. Observation commands used in the experiments:
+The default pinning needs at least 6 cores. All three are on `labnet`.
+Observation commands used in the experiments:
 ```sh
 # the client's view of each endpoint
 docker logs --tail 5 lab-go-preempt-client
@@ -162,20 +169,19 @@ docker logs --tail 5 lab-go-preempt-client
 # container ID, for bpftrace's cgroup filter (or the Go server's)
 SRV=$(docker inspect --format '{{.Id}}' lab-go-preempt-tokioserver)
 
-# gaps between consecutive epoll_wait calls across the whole server, over
-# 10s. Covers epoll_pwait too: Go uses it, and arm64 has no epoll_wait.
+# gaps between consecutive epoll waits across the whole server, over 10s.
+# The wildcard covers epoll_wait, epoll_pwait and epoll_pwait2, whichever
+# exist: Go uses epoll_pwait, and arm64 has no epoll_wait syscall.
 docker exec lab-analysis sh -c "timeout -s INT 10 bpftrace -e '
-tracepoint:syscalls:sys_enter_epoll_wait,tracepoint:syscalls:sys_enter_epoll_pwait
+tracepoint:syscalls:sys_enter_epoll_*wait*
 /cgroup == cgroupid(\"/host/sys/fs/cgroup/docker/${SRV}\")/ {
   if (@last) { @gap_ms = hist((nsecs - @last) / 1000000); @max_gap_ms = max((nsecs - @last) / 1000000); }
   @last = nsecs;
 }
 END { clear(@last); }'"
 
-# established connections to the server with unread data in Recv-Q
-PID=$(docker inspect --format '{{.State.Pid}}' lab-go-preempt-tokioserver)
-docker exec lab-analysis nsenter --net=/proc/$PID/ns/net ss -tnH state established '( sport = :8080 )' \
-  | awk '$1 > 0 { n++ } END { print n+0, "of", NR, "connections with unread data" }'
+# per-thread CPU: which threads are doing the computing
+docker exec lab-analysis sh -c 'ps -L -o tid,comm,pcpu,stat -p $(pgrep -x tokioserver)'
 ```
 A process that's idle also goes long stretches without calling
 `epoll_wait`, because it's blocked inside one waiting for work. The gap
@@ -183,12 +189,15 @@ only measures a stall under load, which is why the client keeps
 `/cheap` traffic flowing during every measurement.
 
 To switch the client to the other server, or change the load, set the
-knob when recreating the client. The servers keep running:
+knob when recreating the client. `--no-deps` matters: without it,
+compose also recreates any server whose settings differ from the
+current environment, which silently resets `HEAVY_MODE` to `inline`.
 ```sh
-TARGET=tokio docker compose -f compose.yml up -d client
-HEAVY_CONC=0 docker compose -f compose.yml up -d client
+TARGET=tokio docker compose -f compose.yml up -d --no-deps client
+TARGET=go HEAVY_CONC=0 docker compose -f compose.yml up -d --no-deps client
 ```
-To move tokio's computation to `spawn_blocking`, recreate its server:
+To move tokio's computation to `spawn_blocking`, recreate its server.
+The client keeps running and reconnects:
 ```sh
 HEAVY_MODE=blocking docker compose -f compose.yml up -d tokioserver
 ```

@@ -1,0 +1,43 @@
+# System under test for 0110. Joins `labnet`, which the analysis
+# container also uses.
+#
+# Each container gets its own cores, so the two servers and the client
+# never compete for CPU, and there's no CPU quota to throttle anything.
+# The defaults need a host (or VM) with at least 6 cores.
+services:
+  goserver:
+    build: .
+    container_name: lab-go-preempt-goserver
+    command: ["goserver"]
+    cpuset: ${GO_CPUS:-0-1}
+    environment:
+      - GOMAXPROCS=${WORKERS:-2}
+      - HEAVY_MS=${HEAVY_MS:-200}
+    networks: [labnet]
+
+  tokioserver:
+    build: ./tokio
+    container_name: lab-go-preempt-tokioserver
+    command: ["tokioserver"]
+    cpuset: ${TOKIO_CPUS:-2-3}
+    environment:
+      - WORKERS=${WORKERS:-2}
+      - HEAVY_MS=${HEAVY_MS:-200}
+      - HEAVY_MODE=${HEAVY_MODE:-inline}
+    networks: [labnet]
+
+  client:
+    build: .
+    container_name: lab-go-preempt-client
+    command: ["client"]
+    cpuset: ${CLIENT_CPUS:-4-5}
+    depends_on: [goserver, tokioserver]
+    environment:
+      - TARGET=${TARGET:-go}
+      - RATE=${RATE:-200}
+      - HEAVY_CONC=${HEAVY_CONC:-2}
+    networks: [labnet]
+
+networks:
+  labnet:
+    external: true
