@@ -180,8 +180,8 @@ tracepoint:syscalls:sys_enter_epoll_*wait*
 }
 END { clear(@last); }'"
 
-# per-thread CPU: which threads are doing the computing
-docker exec lab-analysis sh -c 'ps -L -o tid,comm,pcpu,stat -p $(pgrep -x tokioserver)'
+# CPU per thread over 5s: which threads are doing the computing
+docker exec lab-analysis sh -c 'pidstat -t -p $(pgrep -x tokioserver) 5 1' | grep -E 'TID|Average'
 ```
 A process that's idle also goes long stretches without calling
 `epoll_wait`, because it's blocked inside one waiting for work. The gap
