@@ -180,6 +180,11 @@ tracepoint:syscalls:sys_enter_epoll_*wait*
 }
 END { clear(@last); }'"
 
+# preemption signals (SIGURG, signal 23) generated in the server, over 10s
+docker exec lab-analysis sh -c "timeout -s INT 10 bpftrace -e '
+tracepoint:signal:signal_generate
+/args.sig == 23 && cgroup == cgroupid(\"/host/sys/fs/cgroup/docker/${SRV}\")/ { @sigurg[args.comm] = count(); }'"
+
 # CPU per thread over 5s: which threads are doing the computing
 docker exec lab-analysis sh -c 'pidstat -t -p $(pgrep -x tokioserver) 5 1' | grep -E 'TID|Average'
 ```
