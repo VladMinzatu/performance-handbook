@@ -121,11 +121,11 @@ both servers, the 2 worker threads are at about 100%.
 and beats Go.** With `HEAVY_MODE=blocking`, the same load should bring
 tokio's `/cheap` p99 back to about 1-2ms, the same as with no `/heavy`
 traffic at all, and its `epoll_wait` gaps under about 10ms. The 2 cores
-are still fully busy computing, now on 2 extra threads from the blocking
-pool, with the workers nearly idle. The difference is that the kernel,
-not the task, decides when the workers get to run, and the kernel
-preempts in well under a millisecond when a worker wakes up, where Go's
-runtime waits for its 10ms timer.
+are still fully busy computing, now on threads from the blocking pool,
+with the workers nearly idle. The difference is that the kernel, not
+the task, decides when the workers get to run, and the kernel lets a
+waking worker run within about a millisecond, where Go's runtime
+waits for its 10ms timer.
 
 ## Setup
 
