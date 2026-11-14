@@ -187,6 +187,16 @@ tracepoint:signal:signal_generate
 
 # CPU per thread over 5s: which threads are doing the computing
 docker exec lab-analysis sh -c 'pidstat -t -p $(pgrep -x tokioserver) 5 1' | grep -E 'TID|Average'
+
+# run-queue latency (wakeup to running) of the tokio threads, over 10s
+docker exec lab-analysis sh -c "timeout -s INT 10 bpftrace -e '
+tracepoint:sched:sched_wakeup,tracepoint:sched:sched_wakeup_new /args.comm == \"tokio-rt-worker\"/ { @woken[args.pid] = nsecs; }
+tracepoint:sched:sched_switch /@woken[args.next_pid]/ {
+  @runq_us = hist((nsecs - @woken[args.next_pid]) / 1000);
+  @max_runq_us = max((nsecs - @woken[args.next_pid]) / 1000);
+  delete(@woken[args.next_pid]);
+}
+END { clear(@woken); }'"
 ```
 A process that's idle also goes long stretches without calling
 `epoll_wait`, because it's blocked inside one waiting for work. The gap
