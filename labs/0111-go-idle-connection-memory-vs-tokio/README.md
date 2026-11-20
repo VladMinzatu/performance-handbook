@@ -123,10 +123,17 @@ look busy. Request rate, CPU and latency stay flat. What gives it away:
   `go_memstats_stack_inuse_bytes` in Prometheus' Go collector) grows with
   them, and a heap profile's in-use space is dominated by
   `bufio.NewReaderSize` and `bufio.NewWriterSize`.
+- **Memory doesn't come back right away.** When connections close, a Go
+  server's memory stays near its peak: the runtime keeps freed memory
+  for reuse and returns it to the OS only gradually. So memory reflects
+  the most connections the server has held recently, not the number it
+  holds now.
 - **The failure is an OOM kill during a reconnect storm.** The cgroup's
-  `memory.events` shows an `oom_kill`, every client of that pod is
-  disconnected at once and reconnects to the others, which can push
-  them over too.
+  `memory.events` shows an `oom_kill` (Kubernetes reports the container
+  as `OOMKilled`), and every client of that pod is disconnected at once.
+  Idle clients only notice at their next heartbeat, so they reconnect
+  over the heartbeat interval, to the other pods, which can push them
+  over too.
 
 ## Hypotheses
 
@@ -137,33 +144,36 @@ modes: `pumps`, a read goroutine/task and a write goroutine/task per
 connection with 4KB read and write buffers, or `lean`, one
 goroutine/task per connection holding no buffer while it waits.
 
-**Prediction 1: in Go with pumps, memory grows by about 20KB per
+**Prediction 1: in Go with pumps, memory grows by about 15KB per
 connection, in a straight line.** Going from 10,000 to 50,000
-connections, the server's `memory.current` should grow by about 800MB,
-with no requests other than the pings. About 2 goroutines per
-connection. The runtime should attribute most of it to stacks (2
-goroutines × 4-8KB) and heap buffers (about 8KB per connection), and the
-cgroup a few KB per connection to kernel memory.
+connections, the server's `memory.current` should grow by about 600MB,
+with no requests other than the pings, and the server should run 2
+goroutines per connection. The runtime should attribute about 4KB per
+connection to stacks (2 goroutines at the minimum 2KB each) and about
+10KB to heap objects (the two 4KB buffers, the channel and the
+connection's own structures). On top of that, the kernel holds about
+4KB per socket.
 
-**Prediction 2: holding less while idle cuts that by about 3x.** With
-the Go server in `lean` mode, the same 50,000 connections should cost
-about 5-8KB each: one goroutine's stack, a few hundred bytes of
-connection state and the kernel's socket memory. 1 goroutine per
-connection, and heap memory per connection under 1KB.
+**Prediction 2: holding less while idle cuts that by about 4x.** With
+the Go server in `lean` mode, the same connections should cost about
+3.5-4KB each in the process: one 2KB stack and under 1KB of heap. 1
+goroutine per connection. The kernel's 4KB per socket doesn't change,
+so it's now about half of the total.
 
 **Prediction 3: tokio only wins once the buffers are gone.** With the
-same pumps and 4KB buffers, the tokio server should cost about 10-12KB
-per connection: the same buffers as Go, minus the stacks. In `lean`
-mode it should drop to about 3-4KB, nearly all of it kernel socket
-memory, at about half of Go's lean cost. The process itself should hold
-under 1KB per connection.
+same pumps and 4KB buffers, the tokio server should cost about 11KB per
+connection in the process: the same buffers as Go, minus the stacks.
+In `lean` mode it should drop to about 1-1.5KB, about a third of Go's
+lean cost, from a task of a few hundred bytes. At that point the
+kernel's socket memory is most of what a connection costs.
 
 **Prediction 4 (stretch): the untuned server is the one that gets
-OOM-killed.** With a 512MB memory limit on each server, opening 50,000
-connections should push the Go server in `pumps` mode past the limit at
-about 25,000 connections. Its `memory.events` should show an
-`oom_kill`, and every connection the client holds should be reset at
-once. The same server in `lean` mode should hold all 50,000.
+OOM-killed.** With a 512MB memory limit and no swap, the Go server in
+`pumps` mode should be OOM-killed at about 33,000-35,000 connections,
+long before the client reaches 50,000. The client should see its
+connections fail gradually, each at its next ping, over the 30s ping
+interval. The same server in `lean` mode should hold all 50,000 in
+about 185MB.
 
 ## Setup
 
@@ -184,18 +194,20 @@ docker compose -f compose.yml up -d --build
     process, and writes replies directly to the socket.
 
   Logs every 5s: connections, goroutines, and from `runtime/metrics`
-  the stack memory, heap object memory and the current starting stack
-  size.
+  the stack memory, heap object memory (both in total and per
+  connection) and the size new goroutine stacks currently start at.
 - `lab-go-idleconn-tokioserver` - the same server in Rust, on tokio's
   multi-thread runtime, with the same two modes:
   - `pumps` (default) - a read task with a 4KB `BufReader` and a write
     task draining an `mpsc` channel through a 4KB `BufWriter`. The
     buffer sizes match Go's rather than tokio's default of 8KB, so the
     difference is the runtime, not the buffers.
-  - `lean` - one task waiting in `readable().await`, reading into a
-    pooled buffer only once data is there.
+  - `lean` - one task waiting in `readable().await`. Only once data is
+    there does it read into a buffer on the worker thread's stack, which
+    isn't part of the task.
 
-  Logs every 5s: connections.
+  Logs the size of each kind of task once, at the first connection, and
+  every 5s the number of connections.
 - `lab-go-idleconn-client` - opens `CONNS` connections (default 50,000)
   to `TARGET` (`go` or `tokio`, default `go`), `RAMP` new connections
   per second (default 2,000), sends `SUB` on each and then a `PING`
@@ -205,9 +217,23 @@ docker compose -f compose.yml up -d --build
   port with the default range. Logs every 5s: connections open,
   connection errors and resets.
 
-Both servers have the same 2 cores and no memory limit by default.
-`MEM_LIMIT` sets one on both (for example `512m`). All three are on
-`labnet`. Observation commands used in the experiments:
+Both servers have 2 cores each, and no memory limit by default.
+`MEM_LIMIT` sets one on both (for example `512m`), with swap capped at
+the same value, so in effect no swap, as on a typical Kubernetes node.
+With Docker's default swap allowance, a server that hits its limit is
+pushed into swap instead of being OOM-killed. All three are on
+`labnet`.
+
+The kernel's per-socket memory normally shows up in the cgroup's
+`memory.stat` as `kernel`, `slab` and `sock`. On OrbStack it doesn't:
+its kernel boots with `cgroup.memory=nokmem,nosocket`, so kernel memory
+isn't charged to containers at all, and those fields stay at 0. On this
+setup `memory.current` is the process's own memory, and the kernel's
+share is measured from the VM's total slab memory instead (`Slab` in
+`/proc/meminfo`). That covers both ends of each connection, the
+server's socket and the client's.
+
+Observation commands used in the experiments:
 ```sh
 # each side's own view
 docker logs --tail 5 lab-go-idleconn-goserver
@@ -221,8 +247,13 @@ CG=/host/sys/fs/cgroup/docker/$SRV
 docker exec lab-analysis cat $CG/memory.current
 docker exec lab-analysis grep -E '^(anon|kernel|slab|sock) ' $CG/memory.stat
 
-# OOM kills in the cgroup
-docker exec lab-analysis grep oom_kill $CG/memory.events
+# times the cgroup hit its limit, and OOM kills, while the container runs
+docker exec lab-analysis grep -E '^(max|oom_kill) ' $CG/memory.events
+# after an OOM kill the container and its cgroup are gone; Docker keeps the verdict
+docker inspect --format 'status={{.State.Status}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}}' lab-go-idleconn-goserver
+
+# the VM's slab memory, in kB: kernel socket state for both ends of every connection
+docker exec lab-analysis grep '^Slab:' /proc/meminfo
 
 # established connections on the server's port
 PID=$(docker inspect --format '{{.State.Pid}}' lab-go-idleconn-goserver)
@@ -235,15 +266,18 @@ at both counts.
 
 To change the number of connections, or the target, recreate the
 client. Its connections close, and it opens new ones at `RAMP` per
-second. `--no-deps` keeps compose from recreating the servers:
+second. `--no-deps` keeps compose from recreating the servers, and
+`--force-recreate` starts the client over even if its settings haven't
+changed:
 ```sh
-CONNS=10000 docker compose -f compose.yml up -d --no-deps client
-TARGET=tokio docker compose -f compose.yml up -d --no-deps client
+CONNS=10000 docker compose -f compose.yml up -d --no-deps --force-recreate client
+TARGET=tokio docker compose -f compose.yml up -d --no-deps --force-recreate client
 ```
-To change a server's mode or memory limit, recreate it:
+To change a server's mode or memory limit, recreate it. Set both each
+time: a setting left out goes back to its default.
 ```sh
-MODE=lean docker compose -f compose.yml up -d goserver
-MEM_LIMIT=512m docker compose -f compose.yml up -d goserver
+MODE=lean docker compose -f compose.yml up -d --no-deps goserver
+MEM_LIMIT=512m MODE=pumps docker compose -f compose.yml up -d --no-deps goserver
 ```
 
 ## Experiments

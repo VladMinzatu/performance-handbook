@@ -1,0 +1,11 @@
+[package]
+name = "tokioserver"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
+
+[profile.release]
+debug = 1

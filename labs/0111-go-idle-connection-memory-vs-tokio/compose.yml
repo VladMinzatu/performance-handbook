@@ -1,0 +1,58 @@
+# System under test for 0111. Joins `labnet`, which the analysis
+# container also uses.
+#
+# Each container gets its own cores. File descriptor limits are raised so
+# each side can hold more than 50,000 sockets. MEM_LIMIT sets a memory
+# limit on both servers; 0 means none. Swap is capped at the same value,
+# i.e. no swap, as on a typical Kubernetes node.
+services:
+  goserver:
+    build: .
+    container_name: lab-go-idleconn-goserver
+    command: ["goserver"]
+    cpuset: ${GO_CPUS:-0-1}
+    mem_limit: ${MEM_LIMIT:-0}
+    memswap_limit: ${MEM_LIMIT:-0}
+    ulimits:
+      nofile: {soft: 200000, hard: 200000}
+    environment:
+      - MODE=${MODE:-pumps}
+      - GOMAXPROCS=2
+    networks: [labnet]
+
+  tokioserver:
+    build: ./tokio
+    container_name: lab-go-idleconn-tokioserver
+    command: ["tokioserver"]
+    cpuset: ${TOKIO_CPUS:-2-3}
+    mem_limit: ${MEM_LIMIT:-0}
+    memswap_limit: ${MEM_LIMIT:-0}
+    ulimits:
+      nofile: {soft: 200000, hard: 200000}
+    environment:
+      - MODE=${MODE:-pumps}
+      - WORKERS=2
+    networks: [labnet]
+
+  client:
+    build: .
+    container_name: lab-go-idleconn-client
+    command: ["client"]
+    cpuset: ${CLIENT_CPUS:-4-6}
+    depends_on: [goserver, tokioserver]
+    ulimits:
+      nofile: {soft: 200000, hard: 200000}
+    # One client address can open only about 28,000 connections to one
+    # server port with the default ephemeral port range.
+    sysctls:
+      net.ipv4.ip_local_port_range: "1024 65535"
+    environment:
+      - TARGET=${TARGET:-go}
+      - CONNS=${CONNS:-50000}
+      - RAMP=${RAMP:-2000}
+      - PING_EVERY=${PING_EVERY:-30s}
+    networks: [labnet]
+
+networks:
+  labnet:
+    external: true
